@@ -15,7 +15,7 @@ const DecisionScreen = () => {
 
   useEffect(() => {
     fetchMatchDetails();
-  }, [matchId]);
+  }, [matchId, fetchMatchDetails]);
 
   const fetchMatchDetails = async () => {
     const token = localStorage.getItem('token');
@@ -43,34 +43,6 @@ const DecisionScreen = () => {
       setError(error.message);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handlePinMatch = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      navigate('/login');
-      return;
-    }
-
-    try {
-      const response = await fetch(`http://localhost:5000/api/matches/${matchId}/pin`, {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to pin match');
-      }
-
-      // Navigate to chat
-      navigate(`/chat/${matchId}`);
-    } catch (error) {
-      setError(error.message);
     }
   };
 

@@ -72,7 +72,7 @@ const DailyQuote = () => {
     const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / (1000 * 60 * 60 * 24));
     const quoteIndex = dayOfYear % quotes.length;
     setCurrentQuote(quoteIndex);
-  }, []);
+  }, [quotes.length]);
 
   return (
     <div className="daily-quote-section">

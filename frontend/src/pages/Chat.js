@@ -483,6 +483,12 @@ const Chat = () => {
     }
   };
   
+  useEffect(() => {
+    fetchMatchDetails();
+    fetchMessages();
+    fetchMilestoneStatus();
+  }, [fetchMatchDetails, fetchMessages, fetchMilestoneStatus, matchedUser?.name, messageCount, milestoneReached, userInfo]);
+  
   if (loading && !messages.length) {
     return (
       <div className="chat-loading">

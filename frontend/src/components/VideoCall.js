@@ -62,7 +62,7 @@ const VideoCall = ({ matchId, matchedUser, onEndCall }) => {
         remoteStream.getTracks().forEach(track => track.stop());
       }
     };
-  }, []);
+  }, [localStream, onEndCall, remoteStream]);
   
   // Toggle mute
   const toggleMute = () => {
