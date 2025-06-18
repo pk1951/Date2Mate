@@ -33,52 +33,7 @@ const Dashboard = () => {
     author: "Sam Keen"
   });
 
-  // Get user info and token from localStorage
-  useEffect(() => {
-    const storedUserInfo = JSON.parse(localStorage.getItem('userInfo'));
-    const token = localStorage.getItem('token');
-
-    if (!token || !storedUserInfo) {
-      navigate('/login');
-      return;
-    }
-
-    setUserInfo(storedUserInfo);
-
-    // Set initial user state
-    if (storedUserInfo.currentState) {
-      setUserState(storedUserInfo.currentState);
-    }
-
-    // Fetch daily match
-    fetchDailyMatch(token);
-    fetchUserStats(token);
-    fetchNotifications(token);
-    fetchUserState(token);
-    fetchCurrentUserInfo(token);
-  }, [navigate]);
-
-  // Countdown timer for reflection period
-  useEffect(() => {
-    let timer;
-    if (userState === 'frozen' && reflectionTimeRemaining) {
-      timer = setInterval(() => {
-        setReflectionTimeRemaining(prev => {
-          if (prev <= 0) {
-            clearInterval(timer);
-            setUserState('available');
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-    return () => {
-      if (timer) clearInterval(timer);
-    };
-  }, [userState, reflectionTimeRemaining, fetchDailyMatch, fetchUserState]);
-
-  // Fetch daily match
+  // Place fetchDailyMatch and fetchUserState here, before any useEffect that uses them
   const fetchDailyMatch = useCallback(async (token) => {
     setLoading(true);
     setError('');
@@ -117,23 +72,6 @@ const Dashboard = () => {
     }
   }, []);
 
-  // Fetch user statistics
-  const fetchUserStats = async (token) => {
-    try {
-      // This would be a real API call in production
-      // For now, we'll simulate some stats
-      setUserStats({
-        totalMatches: 12,
-        successfulConnections: 8,
-        averageCompatibility: 87,
-        daysActive: 45
-      });
-    } catch (error) {
-      console.error('Error fetching user stats:', error);
-    }
-  };
-
-  // Fetch user's current state from backend
   const fetchUserState = useCallback(async (token) => {
     try {
       const response = await fetch('http://localhost:5000/api/matches/daily', {
@@ -160,6 +98,66 @@ const Dashboard = () => {
       console.error('Error fetching user state:', error);
     }
   }, []);
+
+  // Get user info and token from localStorage
+  useEffect(() => {
+    const storedUserInfo = JSON.parse(localStorage.getItem('userInfo'));
+    const token = localStorage.getItem('token');
+
+    if (!token || !storedUserInfo) {
+      navigate('/login');
+      return;
+    }
+
+    setUserInfo(storedUserInfo);
+
+    // Set initial user state
+    if (storedUserInfo.currentState) {
+      setUserState(storedUserInfo.currentState);
+    }
+
+    // Fetch daily match
+    fetchDailyMatch(token);
+    fetchUserStats(token);
+    fetchNotifications(token);
+    fetchCurrentUserInfo(token);
+  }, [navigate]);
+
+  // Countdown timer for reflection period
+  useEffect(() => {
+    let timer;
+    if (userState === 'frozen' && reflectionTimeRemaining) {
+      timer = setInterval(() => {
+        setReflectionTimeRemaining(prev => {
+          if (prev <= 0) {
+            clearInterval(timer);
+            setUserState('available');
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [userState, reflectionTimeRemaining, fetchDailyMatch, fetchUserState]);
+
+  // Fetch user statistics
+  const fetchUserStats = async (token) => {
+    try {
+      // This would be a real API call in production
+      // For now, we'll simulate some stats
+      setUserStats({
+        totalMatches: 12,
+        successfulConnections: 8,
+        averageCompatibility: 87,
+        daysActive: 45
+      });
+    } catch (error) {
+      console.error('Error fetching user stats:', error);
+    }
+  };
 
   // Fetch current user info from backend
   const fetchCurrentUserInfo = async (token) => {

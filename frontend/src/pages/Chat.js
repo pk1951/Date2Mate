@@ -34,6 +34,71 @@ const Chat = () => {
     }
   }, []);
   
+  // Place fetchMatchDetails, fetchMessages, fetchMilestoneStatus here, before any useEffect that uses them
+  const fetchMatchDetails = useCallback(async (token) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/matches/${matchId}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to fetch match details');
+      }
+      setMatchDetails(data.match);
+      setMatchedUser(data.matchedUser);
+      setMessageCount(data.messageCount);
+      setMilestoneReached(data.milestoneReached);
+    } catch (error) {
+      setError(error.message);
+    }
+  }, [matchId]);
+  
+  const fetchMessages = useCallback(async (token) => {
+    setLoading(true);
+    try {
+      const response = await fetch(`http://localhost:5000/api/messages/${matchId}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to fetch messages');
+      }
+      setMessages(data.messages);
+      setMessageCount(data.messageCount);
+      setMilestoneReached(data.milestoneReached);
+    } catch (error) {
+      setError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [matchId]);
+  
+  const fetchMilestoneStatus = useCallback(async (token) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/messages/${matchId}/milestone`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to fetch milestone status');
+      }
+      setMessageCount(data.messageCount);
+      setMilestoneReached(data.milestoneReached);
+      setTimeRemaining(data.timeRemainingHours * 3600); // Convert hours to seconds
+    } catch (error) {
+      console.error('Error fetching milestone status:', error);
+    }
+  }, [matchId]);
+  
   // Connect to socket and fetch initial data
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -197,150 +262,6 @@ const Chat = () => {
     
     return () => clearInterval(timer);
   }, [timeRemaining]);
-  
-  // Fetch match details
-  const fetchMatchDetails = useCallback(async (token) => {
-    try {
-      const response = await fetch(`http://localhost:5000/api/matches/${matchId}`, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to fetch match details');
-      }
-      
-      setMatchDetails(data.match);
-      setMatchedUser(data.matchedUser);
-      setMessageCount(data.messageCount);
-      setMilestoneReached(data.milestoneReached);
-    } catch (error) {
-      setError(error.message);
-    }
-  }, [matchId]);
-  
-  // Fetch messages
-  const fetchMessages = useCallback(async (token) => {
-    setLoading(true);
-    
-    try {
-      const response = await fetch(`http://localhost:5000/api/messages/${matchId}`, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to fetch messages');
-      }
-      
-      setMessages(data.messages);
-      setMessageCount(data.messageCount);
-      setMilestoneReached(data.milestoneReached);
-    } catch (error) {
-      setError(error.message);
-    } finally {
-      setLoading(false);
-    }
-  }, [matchId]);
-  
-  // Fetch milestone status
-  const fetchMilestoneStatus = useCallback(async (token) => {
-    try {
-      const response = await fetch(`http://localhost:5000/api/messages/${matchId}/milestone`, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to fetch milestone status');
-      }
-      
-      setMessageCount(data.messageCount);
-      setMilestoneReached(data.milestoneReached);
-      setTimeRemaining(data.timeRemainingHours * 3600); // Convert hours to seconds
-    } catch (error) {
-      console.error('Error fetching milestone status:', error);
-    }
-  }, [matchId]);
-  
-  // Send message
-  const sendMessage = async (e) => {
-    e.preventDefault();
-    
-    if (!newMessage.trim()) return;
-    
-    const token = localStorage.getItem('token');
-    if (!token) {
-      navigate('/login');
-      return;
-    }
-    
-    try {
-      const response = await fetch('http://localhost:5000/api/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          matchId,
-          content: newMessage,
-        }),
-      });
-      
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to send message');
-      }
-      
-      // Add message to state
-      const newMessageObj = {
-        _id: data.message._id,
-        content: newMessage,
-        sender: {
-          _id: userInfo._id,
-          name: userInfo.name,
-          profilePicture: userInfo.profilePicture,
-        },
-        createdAt: new Date().toISOString(),
-      };
-      
-      setMessages([...messages, newMessageObj]);
-      setNewMessage('');
-      setMessageCount(data.messageCount);
-      
-      // Check if milestone reached
-      if (data.milestoneReached && !milestoneReached) {
-        setMilestoneReached(true);
-      }
-      
-      // Emit message to socket only if connected
-      if (socketRef.current && socketRef.current.connected) {
-        socketRef.current.emit('send_message', {
-          matchId,
-          message: newMessageObj,
-          senderId: userInfo._id
-        });
-      } else {
-        console.warn('Socket not connected, message sent via HTTP only');
-      }
-    } catch (error) {
-      setError(error.message);
-    }
-  };
   
   // Scroll to bottom of messages
   const scrollToBottom = () => {
