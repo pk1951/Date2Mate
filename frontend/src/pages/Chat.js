@@ -401,6 +401,64 @@ const Chat = () => {
     }
   };
   
+  // Place sendMessage here, before the return statement and JSX
+  const sendMessage = async (e) => {
+    e.preventDefault();
+    if (!newMessage.trim()) return;
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/login');
+      return;
+    }
+    try {
+      const response = await fetch('http://localhost:5000/api/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          matchId,
+          content: newMessage,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to send message');
+      }
+      // Add message to state
+      const newMessageObj = {
+        _id: data.message._id,
+        content: newMessage,
+        sender: {
+          _id: userInfo._id,
+          name: userInfo.name,
+          profilePicture: userInfo.profilePicture,
+        },
+        createdAt: new Date().toISOString(),
+      };
+      setMessages([...messages, newMessageObj]);
+      setNewMessage('');
+      setMessageCount(data.messageCount);
+      // Check if milestone reached
+      if (data.milestoneReached && !milestoneReached) {
+        setMilestoneReached(true);
+      }
+      // Emit message to socket only if connected
+      if (socketRef.current && socketRef.current.connected) {
+        socketRef.current.emit('send_message', {
+          matchId,
+          message: newMessageObj,
+          senderId: userInfo._id
+        });
+      } else {
+        console.warn('Socket not connected, message sent via HTTP only');
+      }
+    } catch (error) {
+      setError(error.message);
+    }
+  };
+  
   useEffect(() => {
     fetchMatchDetails();
     fetchMessages();
