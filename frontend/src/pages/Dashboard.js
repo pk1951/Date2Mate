@@ -121,7 +121,7 @@ const Dashboard = () => {
     fetchUserStats(token);
     fetchNotifications(token);
     fetchCurrentUserInfo(token);
-  }, [navigate]);
+  }, [navigate, fetchDailyMatch]);
 
   // Countdown timer for reflection period
   useEffect(() => {
