@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import VideoCall from '../components/VideoCall';
@@ -202,7 +202,7 @@ const Chat = () => {
   }, [timeRemaining]);
   
   // Fetch match details
-  const fetchMatchDetails = async (token) => {
+  const fetchMatchDetails = useCallback(async (token) => {
     try {
       const response = await fetch(`http://localhost:5000/api/matches/${matchId}`, {
         method: 'GET',
@@ -224,10 +224,10 @@ const Chat = () => {
     } catch (error) {
       setError(error.message);
     }
-  };
+  }, [matchId]);
   
   // Fetch messages
-  const fetchMessages = async (token) => {
+  const fetchMessages = useCallback(async (token) => {
     setLoading(true);
     
     try {
@@ -252,10 +252,10 @@ const Chat = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [matchId]);
   
   // Fetch milestone status
-  const fetchMilestoneStatus = async (token) => {
+  const fetchMilestoneStatus = useCallback(async (token) => {
     try {
       const response = await fetch(`http://localhost:5000/api/messages/${matchId}/milestone`, {
         method: 'GET',
@@ -276,7 +276,7 @@ const Chat = () => {
     } catch (error) {
       console.error('Error fetching milestone status:', error);
     }
-  };
+  }, [matchId]);
   
   // Send message
   const sendMessage = async (e) => {

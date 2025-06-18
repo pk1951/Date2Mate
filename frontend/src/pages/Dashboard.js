@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaHeart, FaUser, FaComments, FaClock, FaChartLine, FaCog, FaSignOutAlt, FaBell, FaStar, FaUsers, FaCalendarAlt, FaMapMarkerAlt } from 'react-icons/fa';
 import ChatActivityGraph from '../components/ChatActivityGraph';
@@ -80,10 +80,9 @@ const Dashboard = () => {
   }, [userState, reflectionTimeRemaining]);
 
   // Fetch daily match
-  const fetchDailyMatch = async (token) => {
+  const fetchDailyMatch = useCallback(async (token) => {
     setLoading(true);
     setError('');
-
     try {
       const response = await fetch('http://localhost:5000/api/matches/daily', {
         method: 'GET',
@@ -91,31 +90,23 @@ const Dashboard = () => {
           Authorization: `Bearer ${token}`,
         },
       });
-
       const data = await response.json();
-
       if (!response.ok) {
-        // If user is in reflection period, set the countdown
         if (data.currentState === 'frozen' && data.reflectionPeriodEnd) {
           const endTime = new Date(data.reflectionPeriodEnd).getTime();
           const now = new Date().getTime();
           const timeRemaining = Math.max(0, Math.floor((endTime - now) / 1000));
           setReflectionTimeRemaining(timeRemaining);
           setUserState('frozen');
-          
-          // Update userInfo in localStorage with current state
           setUserInfo(prevUserInfo => {
             const updatedUserInfo = { ...prevUserInfo, currentState: 'frozen' };
             localStorage.setItem('userInfo', JSON.stringify(updatedUserInfo));
             return updatedUserInfo;
           });
-          
-          // Fetch real chat activity data
           fetchChatActivity(token);
         }
         throw new Error(data.message || 'Failed to fetch daily match');
       }
-
       setCurrentMatch(data.match);
       setMatchedUser(data.matchedUser);
       setUserState(data.match.status === 'pinned' ? 'pinned' : 'matched');
@@ -125,7 +116,7 @@ const Dashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // Fetch user statistics
   const fetchUserStats = async (token) => {
@@ -144,7 +135,7 @@ const Dashboard = () => {
   };
 
   // Fetch user's current state from backend
-  const fetchUserState = async (token) => {
+  const fetchUserState = useCallback(async (token) => {
     try {
       const response = await fetch('http://localhost:5000/api/matches/daily', {
         method: 'GET',
@@ -152,31 +143,24 @@ const Dashboard = () => {
           Authorization: `Bearer ${token}`,
         },
       });
-
       const data = await response.json();
-
-      // Check if user is in frozen state
       if (data.currentState === 'frozen' && data.reflectionPeriodEnd) {
         const endTime = new Date(data.reflectionPeriodEnd).getTime();
         const now = new Date().getTime();
         const timeRemaining = Math.max(0, Math.floor((endTime - now) / 1000));
         setReflectionTimeRemaining(timeRemaining);
         setUserState('frozen');
-        
-        // Update userInfo in localStorage with current state
         setUserInfo(prevUserInfo => {
           const updatedUserInfo = { ...prevUserInfo, currentState: 'frozen' };
           localStorage.setItem('userInfo', JSON.stringify(updatedUserInfo));
           return updatedUserInfo;
         });
-        
-        // Fetch real chat activity data
         fetchChatActivity(token);
       }
     } catch (error) {
       console.error('Error fetching user state:', error);
     }
-  };
+  }, []);
 
   // Fetch current user info from backend
   const fetchCurrentUserInfo = async (token) => {

@@ -1,17 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaHeart, FaArrowRight, FaUsers, FaStar, FaShieldAlt, FaMobile, FaPlay, FaLinkedin, FaEnvelope, FaGithub } from 'react-icons/fa';
+import { FaHeart, FaArrowRight, FaUsers, FaStar, FaShieldAlt, FaUser, FaComments } from 'react-icons/fa';
 import '../styles/Home.css';
 import founderImage from '../pics/WhatsApp Image 2025-04-18 at 00.29.35_da736d55.jpg';
 
 const Home = () => {
   const navigate = useNavigate();
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    setIsVisible(true);
-    
     // Auto-slide testimonials
     const interval = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % 3);
@@ -233,14 +230,14 @@ const Home = () => {
                       rel="noopener noreferrer"
                       className="social-link linkedin"
                     >
-                      <FaLinkedin />
+                      <FaUser />
                       <span>LinkedIn</span>
                     </a>
                     <a 
                       href="mailto:muniganpraveen@gmail.com" 
                       className="social-link email"
                     >
-                      <FaEnvelope />
+                      <FaComments />
                       <span>Email</span>
                     </a>
                   </div>

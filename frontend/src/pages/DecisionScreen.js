@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import '../styles/DecisionScreen.css';
 
@@ -13,11 +13,7 @@ const DecisionScreen = () => {
   const [unpinReason, setUnpinReason] = useState('not_compatible');
   const [unpinDetails, setUnpinDetails] = useState('');
 
-  useEffect(() => {
-    fetchMatchDetails();
-  }, [matchId, fetchMatchDetails]);
-
-  const fetchMatchDetails = async () => {
+  const fetchMatchDetails = useCallback(async () => {
     const token = localStorage.getItem('token');
     if (!token) {
       navigate('/login');
@@ -44,7 +40,11 @@ const DecisionScreen = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [matchId, navigate]);
+
+  useEffect(() => {
+    fetchMatchDetails();
+  }, [matchId, fetchMatchDetails]);
 
   const handleUnpinMatch = async () => {
     const token = localStorage.getItem('token');
