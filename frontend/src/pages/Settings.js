@@ -4,7 +4,6 @@ import '../styles/Settings.css';
 
 const Settings = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -70,7 +69,6 @@ const Settings = () => {
         throw new Error(data.message || 'Failed to fetch profile');
       }
 
-      setUser(data);
       setFormData({
         name: data.name || '',
         email: data.email || '',
@@ -262,7 +260,6 @@ const Settings = () => {
       }
 
       setSuccess('Profile updated successfully!');
-      setUser(data);
       
       // Clear upload state
       setProfilePicture(null);

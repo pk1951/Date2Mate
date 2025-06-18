@@ -42,10 +42,7 @@ const Chat = () => {
       return;
     }
     
-    // Fetch match details
     fetchMatchDetails(token);
-    
-    // Fetch messages
     fetchMessages(token);
     
     // Connect to socket only if not already connected
@@ -163,7 +160,7 @@ const Chat = () => {
       }
       listenersSetupRef.current = false;
     };
-  }, [matchId, navigate]); // Removed userInfo from dependencies since it's memoized
+  }, [matchId, navigate, fetchMatchDetails, fetchMessages, fetchMilestoneStatus, matchedUser?.name, messageCount, milestoneReached, userInfo]);
   
   // Fetch milestone status periodically
   useEffect(() => {
@@ -177,7 +174,7 @@ const Chat = () => {
     }, 60000); // Check every minute
     
     return () => clearInterval(intervalId);
-  }, [matchId]);
+  }, [matchId, fetchMilestoneStatus]);
   
   // Scroll to bottom when messages change
   useEffect(() => {

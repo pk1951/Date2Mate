@@ -73,11 +73,10 @@ const Dashboard = () => {
         });
       }, 1000);
     }
-
     return () => {
       if (timer) clearInterval(timer);
     };
-  }, [userState, reflectionTimeRemaining]);
+  }, [userState, reflectionTimeRemaining, fetchDailyMatch, fetchUserState]);
 
   // Fetch daily match
   const fetchDailyMatch = useCallback(async (token) => {
