@@ -1,0 +1,37 @@
+{
+  "name": "date2mate",
+  "version": "1.0.0",
+  "description": "A mindful dating app that provides users with one carefully selected match per day",
+  "main": "setup.js",
+  "scripts": {
+    "setup": "node setup.js",
+    "install-backend": "cd backend && npm install",
+    "install-frontend": "cd frontend && npm install",
+    "install-all": "npm run install-backend && npm run install-frontend",
+    "start-backend": "cd backend && npm start",
+    "start-frontend": "cd frontend && npm start",
+    "dev-backend": "cd backend && npm run dev",
+    "dev-frontend": "cd frontend && npm start",
+    "dev": "concurrently \"npm run dev-backend\" \"npm run dev-frontend\"",
+    "build": "cd frontend && npm run build"
+  },
+  "keywords": [
+    "dating",
+    "mindful",
+    "react",
+    "nodejs",
+    "mongodb",
+    "socket.io",
+    "matching",
+    "chat"
+  ],
+  "author": "Date2Mate Team",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=14.0.0",
+    "npm": ">=6.0.0"
+  }
+} 

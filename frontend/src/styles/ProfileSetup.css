@@ -1,0 +1,346 @@
+/* ProfileSetup.css - Styles for the profile setup process */
+
+.profile-setup-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px;
+  position: relative;
+}
+
+.profile-setup-container::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="hearts" patternUnits="userSpaceOnUse" width="20" height="20"><path d="M10 15c-2-3-4-5-6-7-2-2-4-4-4-6s2-4 4-4 4 2 6 4 4 4 6 4 4-2 6-4 4-4 6-4 4 2 4 4-2 4-4 6c-2 2-4 4-6 7z" fill="rgba(255,255,255,0.03)"/></pattern></defs><rect width="100" height="100" fill="url(%23hearts)"/></svg>');
+  pointer-events: none;
+  z-index: 0;
+}
+
+.profile-setup-card {
+  background: white;
+  border-radius: 15px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+  padding: 40px;
+  width: 100%;
+  max-width: 600px;
+  position: relative;
+  z-index: 1;
+}
+
+.profile-setup-card h2 {
+  color: #333;
+  font-size: 28px;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.setup-subtitle {
+  color: #666;
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.progress-bar {
+  height: 8px;
+  background-color: #eee;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(135deg, #ff6b9d 0%, #fd79a8 100%);
+  transition: width 0.3s ease;
+}
+
+.step-indicator {
+  text-align: right;
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 30px;
+}
+
+.setup-step {
+  margin-bottom: 30px;
+}
+
+.setup-step h3 {
+  font-size: 20px;
+  margin-bottom: 10px;
+  color: #333;
+}
+
+.step-description {
+  color: #666;
+  margin-bottom: 20px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #555;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 16px;
+  transition: border-color 0.3s;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  border-color: #ff6b9d;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255, 107, 157, 0.15);
+}
+
+.form-group small {
+  display: block;
+  text-align: right;
+  color: #888;
+  font-size: 12px;
+  margin-top: 5px;
+}
+
+/* Slider styles */
+.slider-group {
+  margin-bottom: 30px;
+}
+
+.slider {
+  width: 100%;
+  height: 8px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: #eee;
+  outline: none;
+  border-radius: 4px;
+  margin: 10px 0;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ff6b9d;
+  cursor: pointer;
+}
+
+.slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ff6b9d;
+  cursor: pointer;
+  border: none;
+}
+
+.slider-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 5px;
+}
+
+.slider-value {
+  text-align: center;
+  font-weight: 600;
+  color: #ff6b9d;
+  margin-top: 5px;
+}
+
+/* Button styles */
+.setup-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 40px;
+}
+
+.setup-button {
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.setup-button.primary {
+  background: linear-gradient(135deg, #ff6b9d 0%, #fd79a8 100%);
+  color: white;
+  border: none;
+  box-shadow: 0 4px 15px rgba(255, 107, 157, 0.3);
+}
+
+.setup-button.primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 107, 157, 0.4);
+}
+
+.setup-button.primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.setup-button.secondary {
+  background: transparent;
+  color: #666;
+  border: 1px solid #ddd;
+}
+
+.setup-button.secondary:hover {
+  background: #f5f5f5;
+  border-color: #ccc;
+}
+
+.setup-error {
+  background: #ffebee;
+  color: #c62828;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border-left: 4px solid #c62828;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .profile-setup-card {
+    padding: 20px;
+    margin: 10px;
+  }
+  
+  .setup-buttons {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .setup-button {
+    width: 100%;
+  }
+}
+
+/* Profile Picture Upload Styles */
+.profile-picture-upload {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  border: 2px dashed var(--border-color);
+  border-radius: 12px;
+  background: var(--bg-secondary);
+  transition: all 0.3s ease;
+}
+
+.profile-picture-upload:hover {
+  border-color: var(--accent-color);
+  background: var(--accent-color-light);
+}
+
+.profile-picture-preview {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid var(--accent-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--card-bg);
+}
+
+.profile-picture-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-picture-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.profile-picture-placeholder span {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.profile-picture-placeholder p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.file-input {
+  display: none;
+}
+
+.file-input-label {
+  background: var(--accent-color);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  border: none;
+  font-size: 0.9rem;
+}
+
+.file-input-label:hover {
+  background: var(--accent-color-dark);
+  transform: translateY(-2px);
+}
+
+.file-input-label:active {
+  transform: translateY(0);
+}
+
+.profile-picture-upload small {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+/* Responsive design for profile picture upload */
+@media (max-width: 768px) {
+  .profile-picture-preview {
+    width: 100px;
+    height: 100px;
+  }
+  
+  .profile-picture-upload {
+    padding: 1rem;
+  }
+  
+  .file-input-label {
+    padding: 0.6rem 1.2rem;
+    font-size: 0.85rem;
+  }
+}
