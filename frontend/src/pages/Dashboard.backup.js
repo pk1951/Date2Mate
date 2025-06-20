@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaHeart, FaUser, FaComments, FaClock, FaChartLine, FaCog, FaSignOutAlt, FaBell, FaStar, FaUsers, FaCalendarAlt, FaMapMarkerAlt } from 'react-icons/fa';
 import ChatActivityGraph from '../components/ChatActivityGraph';
-import { matchesAPI, notificationsAPI, authAPI } from '../services/api';
+import { matchesAPI, notificationsAPI } from '../services/api';
 import '../styles/Dashboard.css';
 
 const Dashboard = () => {
@@ -31,8 +31,6 @@ const Dashboard = () => {
     matches: [],
     connections: []
   });
-  const [showReflectionPrompts, setShowReflectionPrompts] = useState(false);
-  const [userPreferences, setUserPreferences] = useState(null);
 
   // Daily motivation quotes
   const [dailyQuote] = useState({
@@ -40,7 +38,7 @@ const Dashboard = () => {
     author: "Sam Keen"
   });
 
-  // Enhanced fetch daily match data with better error handling
+  // Enhanced fetch daily match data
   const fetchDailyMatch = useCallback(async () => {
     setLoading(true);
     setError('');
@@ -51,10 +49,9 @@ const Dashboard = () => {
         return;
       }
 
-      const [matchData, userData, preferences] = await Promise.all([
+      const [matchData, userData] = await Promise.all([
         matchesAPI.getDailyMatches(),
-        authAPI.getProfile(),
-        matchesAPI.getUserPreferences()
+        matchesAPI.getUserProfile()
       ]);
 
       if (matchData) {
@@ -66,7 +63,6 @@ const Dashboard = () => {
           const timeRemaining = Math.max(0, Math.floor((endTime - now) / 1000));
           setReflectionTimeRemaining(timeRemaining);
           setUserState('frozen');
-          setShowReflectionPrompts(true);
         } else if (matchData.currentMatch) {
           setCurrentMatch(matchData.currentMatch);
           setUserState('in_conversation');
@@ -84,20 +80,19 @@ const Dashboard = () => {
           daysActive: userData.daysActive || 0
         });
       }
-
-      if (preferences) {
-        setUserPreferences(preferences);
+          localStorage.setItem('userInfo', JSON.stringify(updatedUserInfo));
+          return updatedUserInfo;
+        });
+        fetchChatActivity(token);
+        return;
       }
-
-      // Fetch additional data in parallel
-      await Promise.all([
-        fetchChatActivity(token),
-        fetchNotifications(token)
-      ]);
-
+      setCurrentMatch(data.match);
+      setMatchedUser(data.matchedUser);
+      setUserState(data.currentState || 'available');
+      setReflectionTimeRemaining(null);
     } catch (err) {
-      console.error('Error in fetchDailyMatch:', err);
-      setError(err.response?.data?.message || 'Failed to load dashboard data');
+      console.error('Error fetching daily match:', err);
+      setError(err.message || 'Failed to fetch daily match');
     } finally {
       setLoading(false);
     }
@@ -355,11 +350,6 @@ const Dashboard = () => {
         <div className="loading-container">
           <div className="spinner"></div>
           <p>Loading your mindful dating experience...</p>
-          {userState === 'frozen' && (
-            <div className="reflection-hint">
-              <p>Preparing your reflection period...</p>
-            </div>
-          )}
         </div>
       );
     }
@@ -797,44 +787,8 @@ const Dashboard = () => {
     }
   };
 
-  // Render reflection period UI when in frozen state
-  const renderReflectionPeriod = () => (
-    <div className="reflection-container">
-      <div className="reflection-header">
-        <h2>Reflection Period</h2>
-        <p>Take some time to reflect on your recent match</p>
-      </div>
-      
-      <div className="reflection-timer">
-        <FaClock className="reflection-icon" />
-        <span>Time Remaining: {formatTimeRemaining(reflectionTimeRemaining)}</span>
-      </div>
-
-      {showReflectionPrompts && (
-        <div className="reflection-prompts">
-          <h3>Reflection Prompts</h3>
-          <div className="prompt-cards">
-            <div className="prompt-card">
-              <FaHeart className="prompt-icon" />
-              <p>What did you appreciate about your last match?</p>
-            </div>
-            <div className="prompt-card">
-              <FaStar className="prompt-icon" />
-              <p>What qualities are most important to you in a partner?</p>
-            </div>
-            <div className="prompt-card">
-              <FaComments className="prompt-icon" />
-              <p>How can you better communicate your needs in the future?</p>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-
   return (
     <div className="dashboard-container enhanced">
-      {userState === 'frozen' && renderReflectionPeriod()}
       <header className="dashboard-header enhanced">
         <div className="header-left">
           <div className="logo-section">

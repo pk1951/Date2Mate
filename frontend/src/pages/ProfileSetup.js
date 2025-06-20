@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { uploadAPI } from '../services/api';
+import { uploadAPI, authAPI } from '../services/api';
 import '../styles/ProfileSetup.css';
 
 const ProfileSetup = () => {
@@ -176,23 +176,10 @@ const ProfileSetup = () => {
         }
       }
       
-      const response = await fetch('http://localhost:5000/api/auth/profile', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          ...formData,
-          profilePicture: profilePicturePath,
-        }),
+      const data = await authAPI.updateProfile({
+        ...formData,
+        profilePicture: profilePicturePath,
       });
-      
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to update profile');
-      }
       
       // Update user info in localStorage
       localStorage.setItem('userInfo', JSON.stringify(data));

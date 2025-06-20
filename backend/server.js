@@ -18,6 +18,7 @@ const allowedOrigins = [
   // Production and preview URLs
   'https://date2-mate.vercel.app',
   'https://date2-mate-git-main-pes2ug22cs413s-projects.vercel.app',
+  'https://date2-mate-ftss220aa-pes2ug22cs413s-projects.vercel.app',
   'https://date2-mate-jp5vjqtcc-pes2ug22cs413s-projects.vercel.app',
   
   // Pattern for any Vercel preview deployments
@@ -156,17 +157,21 @@ app.get('/health', (req, res) => {
 });
 
 // Import routes
+const userRoutes = require('./routes/userRoutes');
 const authRoutes = require('./routes/authRoutes');
+const profileRoutes = require('./routes/profileRoutes');
 const matchRoutes = require('./routes/matchRoutes');
-const messageRoutes = require('./routes/messageRoutes');
-const notificationRoutes = require('./routes/notificationRoutes');
+const chatRoutes = require('./routes/chatRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
+const socialAuthRoutes = require('./routes/socialAuthRoutes');
 
 // Routes
+app.use('/api/users', userRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/auth', socialAuthRoutes); // Social auth routes
+app.use('/api/profile', profileRoutes);
 app.use('/api/matches', matchRoutes);
-app.use('/api/messages', messageRoutes);
-app.use('/api/notifications', notificationRoutes);
+app.use('/api/chat', chatRoutes);
 app.use('/api/upload', uploadRoutes);
 
 // Serve static files from uploads directory

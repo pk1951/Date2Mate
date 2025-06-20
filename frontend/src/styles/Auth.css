@@ -659,16 +659,27 @@ body {
 }
 
 .forgot-password {
+  font-size: 0.85rem;
   color: var(--primary-color);
   text-decoration: none;
-  font-size: 0.875rem;
-  font-weight: 600;
-  transition: var(--transition);
+  font-weight: 500;
+  transition: all 0.2s ease;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
 }
 
 .forgot-password:hover {
   color: var(--primary-hover);
   text-decoration: underline;
+  background-color: rgba(108, 92, 231, 0.1);
+}
+
+.password-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  width: 100%;
 }
 
 /* Password Input */

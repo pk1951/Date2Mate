@@ -15,9 +15,26 @@ const userSchema = mongoose.Schema(
     },
     password: {
       type: String,
-      required: [true, 'Please add a password'],
+      required: function() { return !this.authProvider; }, // Not required for social logins
       minlength: 6,
       select: false,
+    },
+    authProvider: {
+      type: String,
+      enum: ['google', 'facebook', null],
+      default: null,
+    },
+    providerId: {
+      type: String,
+      select: false,
+    },
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    isProfileComplete: {
+      type: Boolean,
+      default: false,
     },
     profilePicture: {
       type: String,
@@ -64,6 +81,8 @@ const userSchema = mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    resetPasswordToken: String,
+    resetPasswordExpire: Date,
   },
   {
     timestamps: true,

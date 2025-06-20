@@ -60,24 +60,36 @@ const apiRequest = async (endpoint, options = {}) => {
 
 // Auth API
 export const authAPI = {
-  login: (credentials) => apiRequest('/api/auth/login', {
-    method: 'POST',
-    body: credentials,
-  }),
+  login: (credentials) =>
+    apiRequest('/api/auth/login', {
+      method: 'POST',
+      body: credentials,
+    }),
+  register: (userData) =>
+    apiRequest('/api/auth/register', {
+      method: 'POST',
+      body: userData,
+    }),
+  updateProfile: (profileData) =>
+    apiRequest('/api/auth/profile', {
+      method: 'PUT',
+      body: profileData,
+    }),
+  getCurrentUser: () => JSON.parse(localStorage.getItem('userInfo')),
   
-  register: (userData) => apiRequest('/api/auth/register', {
-    method: 'POST',
-    body: userData,
-  }),
-  
-  getProfile: () => apiRequest('/api/auth/profile'),
-  
-  updateProfile: (profileData) => apiRequest('/api/auth/profile', {
-    method: 'PUT',
-    body: profileData,
-  }),
-  
-  getCurrentUser: () => apiRequest('/api/auth/me'),
+  // Password reset methods
+  forgotPassword: (email) =>
+    apiRequest('/api/auth/forgot-password', {
+      method: 'POST',
+      body: { email },
+    }),
+  verifyResetToken: (token) =>
+    apiRequest(`/api/auth/verify-reset-token/${token}`),
+  resetPassword: ({ token, password }) =>
+    apiRequest('/api/auth/reset-password', {
+      method: 'POST',
+      body: { token, password },
+    }),
 };
 
 // Matches API

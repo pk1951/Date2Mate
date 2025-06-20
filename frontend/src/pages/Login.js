@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { FaEnvelope, FaLock, FaSpinner, FaGoogle, FaFacebook, FaHeart } from 'react-icons/fa';
+import { FaEnvelope, FaLock, FaSpinner, FaEye, FaEyeSlash, FaHeart } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import '../styles/Auth.css';
 import '../styles/AnimatedAuth.css';
+import '../styles/SocialLogin.css';
 import DailyQuote from '../components/DailyQuote';
+import SocialLogin from '../components/SocialLogin';
 import { authAPI } from '../services/api';
 
 const Login = () => {
@@ -62,9 +64,18 @@ const Login = () => {
     setShowPassword(!showPassword);
   };
 
-  const handleSocialLogin = (provider) => {
-    // Implement social login logic here
-    toast.info(`${provider} login will be available soon!`);
+  const handleSocialLoginSuccess = (user) => {
+    toast.success('Login successful!');
+    // Redirect based on profile completion
+    if (user.profileComplete) {
+      navigate('/dashboard');
+    } else {
+      navigate('/profile-setup');
+    }
+  };
+
+  const handleSocialLoginError = (error) => {
+    toast.error(error.message || 'Social login failed. Please try again.');
   };
 
   const onSubmit = async (e) => {
@@ -113,7 +124,6 @@ const Login = () => {
       {/* Left Side - Branding and Animation */}
       <div className="auth-branding">
         <div className="branding-content">
-          {/* 1. Date2Mate */}
           <div className="logo-section">
             <h1 className="brand-title">
               <FaHeart className="heart-icon" />
@@ -121,18 +131,14 @@ const Login = () => {
             </h1>
           </div>
           
-          {/* 2. Find Your Perfect Match */}
           <h2 className="brand-tagline">Find Your Perfect Match</h2>
           
-          {/* 3. Description */}
           <p className="brand-description">
             Discover meaningful connections through mindful dating. One match per day, focused on quality over quantity.
           </p>
           
-          {/* 4. Daily Quote */}
           <DailyQuote />
           
-          {/* Animated Hearts */}
           <div className="hearts-container">
             <div className="heart heart-1">❤️</div>
             <div className="heart heart-2">💕</div>
@@ -151,7 +157,7 @@ const Login = () => {
         <div className="auth-card">
           <div className="auth-header">
             <h2>Welcome Back</h2>
-            <p className="auth-subtitle">Sign in to continue your mindful dating journey</p>
+            <p>Sign in to continue your mindful dating journey</p>
           </div>
           
           {Object.keys(errors).length > 0 && (
@@ -212,17 +218,10 @@ const Login = () => {
                   onClick={togglePasswordVisibility}
                   tabIndex="-1"
                 >
-                  {showPassword ? '👁️' : '👁️‍🗨️'}
+                  {showPassword ? <FaEyeSlash /> : <FaEye />}
                 </button>
               </div>
               {errors.password && <span className="error-text">{errors.password}</span>}
-            </div>
-            
-            <div className="form-options">
-              <label className="remember-me">
-                <input type="checkbox" name="remember" />
-                <span>Remember me</span>
-              </label>
             </div>
             
             <button 
@@ -241,35 +240,20 @@ const Login = () => {
             </button>
           </form>
           
-          <div className="divider">or</div>
-          
-          <div className="social-login">
-            <button 
-              type="button" 
-              className="social-btn google"
-              onClick={() => handleSocialLogin('Google')}
-              disabled={loading}
-            >
-              <FaGoogle className="social-icon" />
-              Continue with Google
-            </button>
-            
-            <button 
-              type="button" 
-              className="social-btn facebook"
-              onClick={() => handleSocialLogin('Facebook')}
-              disabled={loading}
-            >
-              <FaFacebook className="social-icon" />
-              Continue with Facebook
-            </button>
+          <div className="divider">
+            <span>or continue with</span>
           </div>
           
-          <div className="auth-links">
+          <SocialLogin 
+            onSuccess={handleSocialLoginSuccess}
+            onError={handleSocialLoginError}
+          />
+          
+          <div className="auth-footer">
             <p>
               Don't have an account?{' '}
               <Link to="/register" className="auth-link">
-                Sign up here
+                Sign up
               </Link>
             </p>
           </div>
