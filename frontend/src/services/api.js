@@ -119,28 +119,65 @@ export const notificationsAPI = {
 
 // Upload API
 export const uploadAPI = {
-  uploadProfilePicture: (formData) => {
+  uploadProfilePicture: async (formData) => {
     const token = localStorage.getItem('token');
-    return fetch(`${API_BASE_URL}/api/upload/profile-picture`, {
-      method: 'POST',
-      credentials: 'include',
-      mode: 'cors',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        // Don't set Content-Type header - let the browser set it with the correct boundary
-      },
-      body: formData,
-    })
-    .then(async (response) => {
+    
+    try {
+      console.log('Starting profile picture upload...');
+      
+      const response = await fetch(`${API_BASE_URL}/api/upload/profile-picture`, {
+        method: 'POST',
+        credentials: 'include',
+        mode: 'cors',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          // Don't set Content-Type header - let the browser set it with the correct boundary
+        },
+        body: formData,
+      });
+      
       const data = await response.json();
+      
+      console.log('Upload response:', {
+        status: response.status,
+        ok: response.ok,
+        data: data
+      });
+      
       if (!response.ok) {
-        throw new Error(data.message || 'Upload failed');
+        const error = new Error(data.message || 'Upload failed');
+        error.response = response;
+        error.data = data;
+        throw error;
       }
+      
+      if (!data.success) {
+        const error = new Error(data.message || 'Upload was not successful');
+        error.response = response;
+        error.data = data;
+        throw error;
+      }
+      
       return data;
-    })
-    .catch(error => {
-      console.error('Upload error:', error);
+    } catch (error) {
+      console.error('Upload error:', {
+        message: error.message,
+        name: error.name,
+        stack: error.stack,
+        response: error.response ? {
+          status: error.response.status,
+          statusText: error.response.statusText,
+          data: error.data
+        } : 'No response',
+        formData: formData ? 'FormData present' : 'No FormData'
+      });
+      
+      // Enhance the error message for better user feedback
+      if (!error.message) {
+        error.message = 'Failed to upload profile picture. Please try again.';
+      }
+      
       throw error;
-    });
+    }
   },
 };

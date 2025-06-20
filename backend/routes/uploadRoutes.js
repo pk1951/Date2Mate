@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const uploadMiddleware = require('../middleware/uploadMiddleware');
-const { protect } = require('../midlleware/authMiddleware');
+const { protect } = require('../middleware/authMiddleware');
 const User = require('../models/userModel');
 const fs = require('fs');
 const path = require('path');
@@ -11,22 +11,46 @@ const path = require('path');
 // @access  Private
 const uploadProfilePicture = async (req, res) => {
   try {
+    console.log('Upload profile picture request received:', {
+      user: req.user ? req.user._id : 'No user in request',
+      file: req.file ? {
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        size: req.file.size,
+        filename: req.file.filename
+      } : 'No file in request'
+    });
+
     if (!req.file) {
-      return res.status(400).json({ message: 'No file uploaded' });
+      console.error('No file uploaded');
+      return res.status(400).json({ 
+        success: false,
+        message: 'No file uploaded' 
+      });
     }
 
     const userId = req.user._id;
     const user = await User.findById(userId);
 
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      console.error('User not found:', userId);
+      return res.status(404).json({ 
+        success: false,
+        message: 'User not found' 
+      });
     }
 
     // Delete old profile picture if it exists
     if (user.profilePicture && user.profilePicture !== '/default-avatar.png') {
-      const oldFilePath = path.join(__dirname, '..', user.profilePicture);
-      if (fs.existsSync(oldFilePath)) {
-        fs.unlinkSync(oldFilePath);
+      try {
+        const oldFilePath = path.join(__dirname, '..', user.profilePicture);
+        if (fs.existsSync(oldFilePath)) {
+          fs.unlinkSync(oldFilePath);
+          console.log('Deleted old profile picture:', oldFilePath);
+        }
+      } catch (error) {
+        console.error('Error deleting old profile picture:', error);
+        // Continue with the upload even if deleting old picture fails
       }
     }
 
@@ -35,13 +59,38 @@ const uploadProfilePicture = async (req, res) => {
     user.profilePicture = profilePicturePath;
     await user.save();
 
+    console.log('Profile picture updated for user:', userId, 'New path:', profilePicturePath);
+
     res.json({
+      success: true,
       message: 'Profile picture uploaded successfully',
-      profilePicture: profilePicturePath
+      profilePicture: profilePicturePath,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        profilePicture: profilePicturePath
+      }
     });
   } catch (error) {
-    console.error('Error uploading profile picture:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('Error in uploadProfilePicture:', {
+      error: error.message,
+      stack: error.stack,
+      request: {
+        user: req.user,
+        file: req.file ? {
+          originalname: req.file.originalname,
+          mimetype: req.file.mimetype,
+          size: req.file.size
+        } : null
+      }
+    });
+    
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error while uploading profile picture',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+    });
   }
 };
 

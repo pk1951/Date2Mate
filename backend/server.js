@@ -65,11 +65,12 @@ const corsOptions = {
     return callback(null, true);
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
-  exposedHeaders: ['Content-Length', 'Authorization'],
-  maxAge: 600, // Cache preflight request for 10 minutes
-  optionsSuccessStatus: 204 // Return 204 for OPTIONS requests
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Content-Length', 'X-CSRF-Token'],
+  exposedHeaders: ['Content-Length', 'Authorization', 'X-CSRF-Token'],
+  maxAge: 86400, // Cache preflight request for 24 hours
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 };
 
 // Handle preflight requests
@@ -138,20 +139,35 @@ const io = new Server(server, {
 
 // Apply CORS to all routes
 app.use(cors(corsOptions));
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: false, limit: '10mb' }));
+
+// Middleware
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// Log all requests for debugging
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.originalUrl}`);
+  next();
+});
 
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK', message: 'Server is running' });
 });
 
+// Import routes
+const authRoutes = require('./routes/authRoutes');
+const matchRoutes = require('./routes/matchRoutes');
+const messageRoutes = require('./routes/messageRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
+const uploadRoutes = require('./routes/uploadRoutes');
+
 // Routes
-app.use('/api/auth', require('./routes/authRoutes'));
-app.use('/api/matches', require('./routes/matchRoutes'));
-app.use('/api/messages', require('./routes/messageRoutes'));
-app.use('/api/notifications', require('./routes/notificationRoutes'));
-app.use('/api/upload', require('./routes/uploadRoutes'));
+app.use('/api/auth', authRoutes);
+app.use('/api/matches', matchRoutes);
+app.use('/api/messages', messageRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Serve static files from uploads directory
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));

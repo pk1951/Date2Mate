@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { uploadAPI } from '../services/api';
 import '../styles/ProfileSetup.css';
 
 const ProfileSetup = () => {
@@ -136,24 +137,17 @@ const ProfileSetup = () => {
 
     setUploadingPicture(true);
     try {
-      const token = localStorage.getItem('token');
       const formData = new FormData();
       formData.append('profilePicture', profilePicture);
-
-      const response = await fetch('http://localhost:5000/api/upload/profile-picture', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to upload profile picture');
+      
+      console.log('Uploading profile picture...');
+      const data = await uploadAPI.uploadProfilePicture(formData);
+      console.log('Profile picture uploaded successfully:', data);
+      
+      if (!data || !data.profilePicture) {
+        throw new Error('Failed to upload profile picture: Invalid response from server');
       }
-
+      
       return data.profilePicture;
     } catch (error) {
       setError(error.message);
