@@ -15,8 +15,17 @@ const server = http.createServer(app);
 
 // CORS configuration
 const allowedOrigins = [
-  'https://date2-mate.vercel.app', // Production frontend (note the hyphen)
-  'http://localhost:3000',         // Local development
+  // Production and preview URLs
+  'https://date2-mate.vercel.app',
+  'https://date2-mate-git-main-pes2ug22cs413s-projects.vercel.app',
+  'https://date2-mate-jp5vjqtcc-pes2ug22cs413s-projects.vercel.app',
+  
+  // Pattern for any Vercel preview deployments
+  'https://date2-mate-*.vercel.app',
+  'https://date2-mate-*-pes2ug22cs413s-projects.vercel.app',
+  
+  // Local development
+  'http://localhost:3000',
   'http://localhost:3001'
 ];
 
@@ -25,10 +34,34 @@ const corsOptions = {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = `The CORS policy for this site does not allow access from the specified origin: ${origin}`;
+    // Log the origin for debugging
+    console.log('CORS check for origin:', origin);
+    
+    // Check if the origin is in the allowed list or matches any pattern
+    const isAllowed = allowedOrigins.some(allowedOrigin => {
+      // Direct match
+      if (allowedOrigin === origin) return true;
+      
+      // Wildcard pattern matching
+      if (allowedOrigin.includes('*')) {
+        // Escape special regex chars except *
+        const escaped = allowedOrigin
+          .replace(/[.+?^${}()|[\]\\]/g, '\\$&')
+          .replace(/\*/g, '.*');
+        const pattern = new RegExp(`^${escaped}$`);
+        return pattern.test(origin);
+      }
+      
+      return false;
+    });
+    
+    if (!isAllowed) {
+      const msg = `CORS: Origin '${origin}' not allowed. Allowed origins: ${allowedOrigins.join(', ')}`;
+      console.warn(msg);
       return callback(new Error(msg), false);
     }
+    
+    console.log('CORS: Allowed origin:', origin);
     return callback(null, true);
   },
   credentials: true,
@@ -45,15 +78,62 @@ app.options('*', cors(corsOptions));
 // Set up Socket.io with CORS
 const io = new Server(server, {
   cors: {
-    origin: allowedOrigins,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+      
+      console.log('Socket.IO CORS check for origin:', origin);
+      
+      // Check if the origin is in the allowed list or matches any pattern
+      const isAllowed = allowedOrigins.some(allowedOrigin => {
+        // Direct match
+        if (allowedOrigin === origin) return true;
+        
+        // Wildcard pattern matching
+        if (allowedOrigin.includes('*')) {
+          // Escape special regex chars except *
+          const escaped = allowedOrigin
+            .replace(/[.+?^${}()|[\]\\]/g, '\\$&')
+            .replace(/\*/g, '.*');
+          const pattern = new RegExp(`^${escaped}$`);
+          return pattern.test(origin);
+        }
+        
+        return false;
+      });
+      
+      if (isAllowed) {
+        console.log('Socket.IO CORS: Allowed origin:', origin);
+        callback(null, true);
+      } else {
+        const msg = `Socket.IO CORS: Origin '${origin}' not allowed`;
+        console.warn(msg);
+        callback(new Error(msg));
+      }
+    },
     methods: ['GET', 'POST'],
-    credentials: true
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+    exposedHeaders: ['Content-Length', 'Authorization'],
+    // Additional WebSocket settings
+    cors: {
+      origin: true, // Reflect the request origin
+      credentials: true
+    },
+    // Enable compatibility with older Socket.IO clients
+    allowEIO3: true,
+    // Increase timeout for long polling
+    pingTimeout: 60000,
+    pingInterval: 25000
   },
-  pingTimeout: 60000, // 60 seconds
-  pingInterval: 25000, // 25 seconds
+  // Transport settings
   transports: ['websocket', 'polling'],
-  allowEIO3: true,
-  maxHttpBufferSize: 1e8 // 100 MB
+  // Maximum buffer size for messages
+  maxHttpBufferSize: 1e8, // 100 MB
+  // Enable HTTP long-polling
+  serveClient: false,
+  // Path for Socket.IO
+  path: '/socket.io/'
 });
 
 // Apply CORS to all routes
@@ -82,8 +162,32 @@ initializeSocket(io);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ message: 'Something went wrong!' });
+  console.error('Error:', {
+    message: err.message,
+    stack: err.stack,
+    url: req.originalUrl,
+    method: req.method,
+    headers: req.headers,
+    body: req.body
+  });
+  
+  // Handle CORS errors
+  if (err.message.includes('CORS') || err.message.includes('cors')) {
+    console.error('CORS Error Details:', {
+      origin: req.headers.origin,
+      allowedOrigins: allowedOrigins
+    });
+    return res.status(403).json({ 
+      message: 'Not allowed by CORS',
+      error: err.message 
+    });
+  }
+  
+  // Handle other errors
+  res.status(500).json({ 
+    message: 'Something went wrong!',
+    error: process.env.NODE_ENV === 'development' ? err.message : undefined
+  });
 });
 
 // 404 handler
