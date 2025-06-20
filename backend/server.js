@@ -160,7 +160,8 @@ app.get('/health', (req, res) => {
 const userRoutes = require('./routes/userRoutes');
 const authRoutes = require('./routes/authRoutes');
 const matchRoutes = require('./routes/matchRoutes');
-const chatRoutes = require('./routes/chatRoutes');
+const messageRoutes = require('./routes/messageRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
 const socialAuthRoutes = require('./routes/socialAuthRoutes');
 
@@ -169,7 +170,8 @@ app.use('/api/users', userRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/auth', socialAuthRoutes); // Social auth routes
 app.use('/api/matches', matchRoutes);
-app.use('/api/chat', chatRoutes);
+app.use('/api/chat', messageRoutes); // Using messageRoutes for chat functionality
+app.use('/api/notifications', notificationRoutes);
 app.use('/api/upload', uploadRoutes);
 
 // Serve static files from uploads directory
