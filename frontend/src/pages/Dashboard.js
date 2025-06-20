@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaHeart, FaUser, FaComments, FaClock, FaChartLine, FaCog, FaSignOutAlt, FaBell, FaStar, FaUsers, FaCalendarAlt, FaMapMarkerAlt } from 'react-icons/fa';
 import ChatActivityGraph from '../components/ChatActivityGraph';
-import { matchesAPI, authAPI } from '../services/api';
+import { matchesAPI, authAPI, notificationsAPI } from '../services/api';
 import '../styles/Dashboard.css';
 
 const Dashboard = () => {
@@ -43,63 +43,103 @@ const Dashboard = () => {
   const fetchDailyMatch = useCallback(async () => {
     setLoading(true);
     setError('');
+    console.log('Starting to fetch dashboard data...');
+    
     try {
       const token = localStorage.getItem('token');
+      console.log('Token found in localStorage:', !!token);
+      
       if (!token) {
+        console.log('No token found, redirecting to login');
         navigate('/login');
         return;
       }
 
-      const [matchData, userData] = await Promise.all([
-        matchesAPI.getDailyMatches(),
-        authAPI.getCurrentUser()
-      ]);
-
-      if (matchData) {
-        setMatchData(matchData);
+      console.log('Fetching user data...');
+      try {
+        // First get the current user data
+        const userData = await authAPI.getCurrentUser();
+        console.log('Successfully fetched current user:', userData);
         
-        if (matchData.currentState === 'frozen' && matchData.reflectionPeriodEnd) {
-          const endTime = new Date(matchData.reflectionPeriodEnd).getTime();
-          const now = new Date().getTime();
-          const timeRemaining = Math.max(0, Math.floor((endTime - now) / 1000));
-          setReflectionTimeRemaining(timeRemaining);
-          setUserState('frozen');
-          setShowReflectionPrompts(true);
-        } else if (matchData.currentMatch) {
-          setCurrentMatch(matchData.currentMatch);
-          setUserState('in_conversation');
-        } else {
-          setUserState('available');
+        // Update user info and stats
+        if (userData) {
+          // Save user info to localStorage for quick access
+          localStorage.setItem('userInfo', JSON.stringify(userData));
+          
+          setUserInfo(userData);
+          setUserStats({
+            totalMatches: userData.totalMatches || 0,
+            successfulConnections: userData.successfulConnections || 0,
+            averageCompatibility: userData.averageCompatibility || 0,
+            daysActive: userData.daysActive || 0
+          });
         }
+        
+        // Then fetch match data
+        console.log('Fetching match data...');
+        try {
+          const matchData = await matchesAPI.getDailyMatches();
+          console.log('Successfully fetched daily matches:', matchData);
+          
+          if (matchData) {
+            setMatchData(matchData);
+            
+            if (matchData.currentState === 'frozen' && matchData.reflectionPeriodEnd) {
+              const endTime = new Date(matchData.reflectionPeriodEnd).getTime();
+              const now = new Date().getTime();
+              const timeRemaining = Math.max(0, Math.floor((endTime - now) / 1000));
+              setReflectionTimeRemaining(timeRemaining);
+              setUserState('frozen');
+              setShowReflectionPrompts(true);
+            } else if (matchData.currentMatch) {
+              setCurrentMatch(matchData.currentMatch);
+              setUserState('in_conversation');
+            } else {
+              setUserState('available');
+            }
+          } else {
+            setUserState('available');
+          }
+          
+          // Finally, fetch additional data
+          console.log('Fetching additional data...');
+          try {
+            await Promise.all([
+              fetchChatActivity(token),
+              fetchNotifications(token)
+            ]);
+          } catch (additionalDataError) {
+            console.warn('Error fetching additional data (non-critical):', additionalDataError);
+            // Continue even if additional data fails to load
+          }
+          
+        } catch (matchError) {
+          console.error('Error fetching match data:', matchError);
+          setUserState('available');
+          throw new Error(`Failed to load match data: ${matchError.message || 'Unknown error'}`);
+        }
+        
+      } catch (userError) {
+        console.error('Error fetching user data:', userError);
+        throw new Error(`Failed to load user data: ${userError.message || 'Unknown error'}`);
       }
-
-      if (userData) {
-        setUserInfo(userData);
-        setUserStats({
-          totalMatches: userData.totalMatches || 0,
-          successfulConnections: userData.successfulConnections || 0,
-          averageCompatibility: userData.averageCompatibility || 0,
-          daysActive: userData.daysActive || 0
-        });
-      }
-
-      // Fetch additional data in parallel
-      await Promise.all([
-        fetchChatActivity(token),
-        fetchNotifications(token)
-      ]);
 
     } catch (err) {
       console.error('Error in fetchDailyMatch:', err);
-      const errorMessage = err.response?.data?.message || 
-                         err.message || 
-                         'Failed to load dashboard data. Please try again later.';
+      const errorMessage = err.message || 'Failed to load dashboard data. Please try again later.';
       console.error('Error details:', {
         message: err.message,
         response: err.response,
         stack: err.stack
       });
       setError(errorMessage);
+      
+      // If it's an auth error, redirect to login
+      if (err.message.includes('401') || err.message.includes('token') || err.message.includes('session')) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('userInfo');
+        navigate('/login');
+      }
     } finally {
       setLoading(false);
     }
@@ -189,76 +229,107 @@ const Dashboard = () => {
   // Fetch current user info from backend
   const fetchCurrentUserInfo = async (token) => {
     try {
-      const response = await fetch('http://localhost:5000/api/auth/me', {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setUserInfo(prevUserInfo => {
-          const updatedUserInfo = { ...prevUserInfo, ...data };
-          localStorage.setItem('userInfo', JSON.stringify(updatedUserInfo));
-          return updatedUserInfo;
+      console.log('Fetching current user info...');
+      const data = await authAPI.getCurrentUser();
+      console.log('Current user data:', data);
+      
+      if (data) {
+        const updatedUser = { 
+          ...data,
+          // Ensure we have all required fields with defaults
+          name: data.name || 'User',
+          email: data.email || '',
+          profilePicture: data.profilePicture || '',
+          totalMatches: data.totalMatches || 0,
+          successfulConnections: data.successfulConnections || 0,
+          averageCompatibility: data.averageCompatibility || 0,
+          daysActive: data.daysActive || 0
+        };
+        
+        setUserInfo(updatedUser);
+        localStorage.setItem('userInfo', JSON.stringify(updatedUser));
+        
+        // Also update user stats
+        setUserStats({
+          totalMatches: updatedUser.totalMatches,
+          successfulConnections: updatedUser.successfulConnections,
+          averageCompatibility: updatedUser.averageCompatibility,
+          daysActive: updatedUser.daysActive
         });
+        
+        return updatedUser;
       }
+      return null;
     } catch (error) {
-      console.error('Error fetching current user info:', error);
+      console.error('Error fetching current user info:', {
+        message: error.message,
+        status: error.status,
+        response: error.response,
+        stack: error.stack
+      });
+      
+      // If it's an auth error, clear local storage and redirect to login
+      if (error.message.includes('401') || error.message.includes('token') || error.message.includes('session')) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('userInfo');
+        navigate('/login');
+      }
+      
+      throw error; // Re-throw to be handled by the caller
     }
   };
 
   // Fetch real chat activity data
   const fetchChatActivity = async (token) => {
     try {
-      const response = await fetch('http://localhost:5000/api/notifications/activity', {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      console.log('Fetching chat activity...');
+      const data = await notificationsAPI.getActivity();
+      console.log('Chat activity data:', data);
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to fetch chat activity');
+      if (data) {
+        setMatchData(prev => ({
+          ...prev,
+          startTime: data.matchStartTime ? new Date(data.matchStartTime) : new Date(),
+          endTime: data.matchEndTime ? new Date(data.matchEndTime) : new Date(),
+          duration: data.matchDuration || 0
+        }));
+        setChatDuration(data.matchDuration || 0);
+        setChatMessageCount(data.totalMessages || 0);
+        setActivityData(data.activityData || []);
       }
-
-      setMatchData({
-        startTime: new Date(data.matchStartTime),
-        endTime: new Date(data.matchEndTime),
-        duration: data.matchDuration
-      });
-      setChatDuration(data.matchDuration);
-      setChatMessageCount(data.totalMessages);
-      setActivityData(data.activityData);
     } catch (error) {
       console.error('Error fetching chat activity:', error);
+      // Set default values on error
+      setMatchData(prev => ({
+        ...prev,
+        startTime: new Date(),
+        endTime: new Date(),
+        duration: 0
+      }));
+      setChatDuration(0);
+      setChatMessageCount(0);
+      setActivityData([]);
+      throw error; // Re-throw to be handled by the caller
     }
   };
 
   // Fetch notifications
   const fetchNotifications = async (token) => {
     try {
-      const response = await fetch('http://localhost:5000/api/notifications', {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to fetch notifications');
+      console.log('Fetching notifications...');
+      const data = await notificationsAPI.getNotifications();
+      console.log('Notifications data:', data);
+      
+      if (data) {
+        setNotifications(data.notifications || []);
+        setUnreadCount(data.unreadCount || 0);
       }
-
-      setNotifications(data.notifications);
-      setUnreadCount(data.unreadCount);
     } catch (error) {
       console.error('Error fetching notifications:', error);
+      // Set default values on error
+      setNotifications([]);
+      setUnreadCount(0);
+      throw error; // Re-throw to be handled by the caller
     }
   };
 
@@ -266,26 +337,8 @@ const Dashboard = () => {
   const handlePinMatch = async () => {
     if (!currentMatch) return;
 
-    const token = localStorage.getItem('token');
-    if (!token) {
-      navigate('/login');
-      return;
-    }
-
     try {
-      const response = await fetch(`http://localhost:5000/api/matches/${currentMatch._id}/pin`, {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to pin match');
-      }
-
+      const data = await matchesAPI.pinMatch(currentMatch._id);
       setUserState('pinned');
       setCurrentMatch(data.match);
     } catch (error) {
@@ -297,27 +350,8 @@ const Dashboard = () => {
   const handleUnpinMatch = async (reason = 'not_compatible', details = '') => {
     if (!currentMatch) return;
 
-    const token = localStorage.getItem('token');
-    if (!token) {
-      navigate('/login');
-      return;
-    }
-
     try {
-      const response = await fetch(`http://localhost:5000/api/matches/${currentMatch._id}/unpin`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ reason, details }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to unpin match');
-      }
+      const data = await matchesAPI.unpinMatch(currentMatch._id, { reason, details });
 
       setUserState('frozen');
       setCurrentMatch(null);

@@ -4,12 +4,18 @@ const API_BASE_URL = 'https://date2mate.onrender.com';
 // For local development, you can uncomment the line below:
 // const API_BASE_URL = 'http://localhost:5000';
 
-// Ensure API_BASE_URL ends with a slash
+// Ensure API_BASE_URL doesn't end with a slash
 const BASE_URL = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
+
+console.log('Using API base URL:', BASE_URL); // Debug log
 
 // Helper function to handle API requests
 const apiRequest = async (endpoint, options = {}) => {
-  const url = `${BASE_URL}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
+  // Ensure endpoint starts with a slash
+  const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const url = `${BASE_URL}${normalizedEndpoint}`;
+  
+  console.log(`API Request: ${options.method || 'GET'} ${url}`);
   
   // Add authorization header if token exists
   const token = localStorage.getItem('token');
@@ -31,32 +37,74 @@ const apiRequest = async (endpoint, options = {}) => {
   // Add body if present (except for GET/HEAD requests)
   if (options.body && !['GET', 'HEAD'].includes(options.method || 'GET')) {
     requestOptions.body = JSON.stringify(options.body);
+    console.log('Request body:', requestOptions.body);
   }
 
   try {
     const response = await fetch(url, requestOptions);
+    console.log(`Response status: ${response.status} ${response.statusText}`);
     
     // Handle empty responses (like 204 No Content)
     const contentType = response.headers.get('content-type');
     let data;
     
-    if (contentType && contentType.includes('application/json')) {
-      data = await response.json();
-    } else if (response.status === 204) {
-      // Handle 204 No Content responses
-      return { status: 'success' };
-    } else {
-      const text = await response.text();
-      throw new Error(`Unexpected response format: ${text}`);
+    try {
+      // Only try to parse as JSON if the content type is JSON
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+        console.log('Response data:', data);
+      } else if (response.status === 204) {
+        // Handle 204 No Content responses
+        console.log('Received 204 No Content response');
+        return { status: 'success' };
+      } else {
+        const text = await response.text();
+        console.log('Non-JSON response:', text);
+        throw new Error(`Unexpected response format: ${text}`);
+      }
+    } catch (parseError) {
+      console.error('Error parsing response:', parseError);
+      if (response.ok) {
+        // If the response is ok but we couldn't parse it, return empty success
+        return { status: 'success' };
+      }
+      throw parseError;
     }
 
     if (!response.ok) {
-      throw new Error(data.message || `Request failed with status ${response.status}`);
+      const error = new Error(data.message || `Request failed with status ${response.status}`);
+      error.status = response.status;
+      error.response = data;
+      throw error;
     }
 
     return data;
   } catch (error) {
-    console.error('API Error:', error);
+    console.error('API Request Failed:', {
+      url,
+      error: error.message,
+      status: error.status,
+      response: error.response,
+      stack: error.stack,
+    });
+    
+    // Enhance error message for common issues
+    if (error.message.includes('Failed to fetch')) {
+      error.message = 'Unable to connect to the server. Please check your internet connection.';
+    } else if (error.status === 401) {
+      error.message = 'Your session has expired. Please log in again.';
+      // Optionally redirect to login
+      localStorage.removeItem('token');
+      localStorage.removeItem('userInfo');
+      window.location.href = '/login';
+    } else if (error.status === 403) {
+      error.message = 'You do not have permission to perform this action.';
+    } else if (error.status === 404) {
+      error.message = 'The requested resource was not found.';
+    } else if (error.status >= 500) {
+      error.message = 'A server error occurred. Please try again later.';
+    }
+    
     throw error;
   }
 };
@@ -78,7 +126,7 @@ export const authAPI = {
       method: 'PUT',
       body: profileData,
     }),
-  getCurrentUser: () => JSON.parse(localStorage.getItem('userInfo')),
+  getCurrentUser: () => apiRequest('/api/auth/me'),
   
   // Password reset methods
   forgotPassword: (email) =>
@@ -105,8 +153,9 @@ export const matchesAPI = {
     method: 'POST',
   }),
   
-  unpinMatch: (matchId) => apiRequest(`/api/matches/${matchId}/unpin`, {
+  unpinMatch: (matchId, options = {}) => apiRequest(`/api/matches/${matchId}/unpin`, {
     method: 'POST',
+    body: options,
   }),
 };
 
