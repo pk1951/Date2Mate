@@ -32,7 +32,6 @@ const Dashboard = () => {
     connections: []
   });
   const [showReflectionPrompts, setShowReflectionPrompts] = useState(false);
-  const [userPreferences, setUserPreferences] = useState(null);
 
   // Daily motivation quotes
   const [dailyQuote] = useState({
@@ -51,10 +50,9 @@ const Dashboard = () => {
         return;
       }
 
-      const [matchData, userData, preferences] = await Promise.all([
+      const [matchData, userData] = await Promise.all([
         matchesAPI.getDailyMatches(),
-        authAPI.getProfile(),
-        matchesAPI.getUserPreferences()
+        authAPI.getProfile()
       ]);
 
       if (matchData) {
@@ -83,10 +81,6 @@ const Dashboard = () => {
           averageCompatibility: userData.averageCompatibility || 0,
           daysActive: userData.daysActive || 0
         });
-      }
-
-      if (preferences) {
-        setUserPreferences(preferences);
       }
 
       // Fetch additional data in parallel
