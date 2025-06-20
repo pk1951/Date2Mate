@@ -6,7 +6,7 @@ A mindful dating app that provides users with one carefully selected match per d
 ## Tech Stack
 - **Frontend**: React.js
 - **Backend**: Node.js with Express.js
-- **Database**: MongoDB
+- **Database**: MongoDB atlas
 - **Real-time Communication**: Socket.io
 
 ## Frontend Pages
