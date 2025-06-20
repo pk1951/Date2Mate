@@ -1,8 +1,5 @@
-// Base API configuration - using the production backend URL
-const API_BASE_URL = 'https://date2mate.onrender.com';
-
-// For local development, you can uncomment the line below:
-// const API_BASE_URL = 'http://localhost:5000';
+// Base API configuration - use environment variable or default to production URL
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'https://date2mate.onrender.com';
 
 // Ensure API_BASE_URL doesn't end with a slash
 const BASE_URL = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
@@ -80,29 +77,43 @@ const apiRequest = async (endpoint, options = {}) => {
 
     return data;
   } catch (error) {
-    console.error('API Request Failed:', {
+    const errorDetails = {
       url,
       error: error.message,
       status: error.status,
       response: error.response,
       stack: error.stack,
-    });
+    };
+    
+    console.error('API Request Failed:', errorDetails);
     
     // Enhance error message for common issues
-    if (error.message.includes('Failed to fetch')) {
+    if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
       error.message = 'Unable to connect to the server. Please check your internet connection.';
+      error.status = error.status || 0;
     } else if (error.status === 401) {
       error.message = 'Your session has expired. Please log in again.';
-      // Optionally redirect to login
+      // Clear auth data and redirect to login
       localStorage.removeItem('token');
       localStorage.removeItem('userInfo');
-      window.location.href = '/login';
+      // Use window.location instead of navigate to ensure full page reload
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
     } else if (error.status === 403) {
       error.message = 'You do not have permission to perform this action.';
     } else if (error.status === 404) {
       error.message = 'The requested resource was not found.';
     } else if (error.status >= 500) {
       error.message = 'A server error occurred. Please try again later.';
+    } else if (!error.status) {
+      error.status = 0; // Network error or CORS issue
+      error.message = 'Unable to connect to the server. Please try again later.';
+    }
+    
+    // Add status code to error object if not present
+    if (!error.status) {
+      error.status = 0;
     }
     
     throw error;
@@ -111,22 +122,32 @@ const apiRequest = async (endpoint, options = {}) => {
 
 // Auth API
 export const authAPI = {
+  // Login user
   login: (credentials) =>
     apiRequest('/api/auth/login', {
       method: 'POST',
       body: credentials,
     }),
+    
+  // Register new user
   register: (userData) =>
     apiRequest('/api/auth/register', {
       method: 'POST',
       body: userData,
     }),
+    
+  // Get current user profile (alias for getCurrentUser for backward compatibility)
+  getProfile: () => apiRequest('/api/auth/me'),
+  
+  // Get current user
+  getCurrentUser: () => apiRequest('/api/auth/me'),
+  
+  // Update user profile
   updateProfile: (profileData) =>
     apiRequest('/api/auth/profile', {
       method: 'PUT',
       body: profileData,
     }),
-  getCurrentUser: () => apiRequest('/api/auth/me'),
   
   // Password reset methods
   forgotPassword: (email) =>
@@ -134,8 +155,10 @@ export const authAPI = {
       method: 'POST',
       body: { email },
     }),
+    
   verifyResetToken: (token) =>
     apiRequest(`/api/auth/verify-reset-token/${token}`),
+    
   resetPassword: ({ token, password }) =>
     apiRequest('/api/auth/reset-password', {
       method: 'POST',

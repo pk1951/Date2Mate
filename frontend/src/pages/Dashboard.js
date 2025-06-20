@@ -57,23 +57,39 @@ const Dashboard = () => {
 
       console.log('Fetching user data...');
       try {
-        // First get the current user data
+        // First get the current user data using authAPI
         const userData = await authAPI.getCurrentUser();
         console.log('Successfully fetched current user:', userData);
         
-        // Update user info and stats
-        if (userData) {
-          // Save user info to localStorage for quick access
-          localStorage.setItem('userInfo', JSON.stringify(userData));
-          
-          setUserInfo(userData);
-          setUserStats({
-            totalMatches: userData.totalMatches || 0,
-            successfulConnections: userData.successfulConnections || 0,
-            averageCompatibility: userData.averageCompatibility || 0,
-            daysActive: userData.daysActive || 0
-          });
+        if (!userData) {
+          throw new Error('Failed to load user data');
         }
+        
+        // Update user info and stats
+        const userInfo = {
+          ...userData,
+          // Ensure all required fields have default values
+          name: userData.name || 'User',
+          email: userData.email || '',
+          profilePicture: userData.profilePicture || '',
+          totalMatches: userData.totalMatches || 0,
+          successfulConnections: userData.successfulConnections || 0,
+          averageCompatibility: userData.averageCompatibility || 0,
+          daysActive: userData.daysActive || 0
+        };
+        
+        // Save user info to localStorage for quick access
+        localStorage.setItem('userInfo', JSON.stringify(userInfo));
+        
+        setUserInfo(userInfo);
+        setUserStats({
+          totalMatches: userInfo.totalMatches,
+          successfulConnections: userInfo.successfulConnections,
+          averageCompatibility: userInfo.averageCompatibility,
+          daysActive: userInfo.daysActive
+        });
+        
+        return userInfo;
         
         // Then fetch match data
         console.log('Fetching match data...');
@@ -105,13 +121,15 @@ const Dashboard = () => {
           console.log('Fetching additional data...');
           try {
             await Promise.all([
-              fetchChatActivity(token),
-              fetchNotifications(token)
+              fetchChatActivity(),
+              fetchNotifications()
             ]);
           } catch (additionalDataError) {
             console.warn('Error fetching additional data (non-critical):', additionalDataError);
             // Continue even if additional data fails to load
           }
+          
+          return { success: true };
           
         } catch (matchError) {
           console.error('Error fetching match data:', matchError);
@@ -168,27 +186,53 @@ const Dashboard = () => {
 
   // Get user info and token from localStorage
   useEffect(() => {
-    const storedUserInfo = JSON.parse(localStorage.getItem('userInfo'));
     const token = localStorage.getItem('token');
-
-    if (!token || !storedUserInfo) {
+    if (!token) {
       navigate('/login');
       return;
     }
 
-    setUserInfo(storedUserInfo);
-
-    // Set initial user state
-    if (storedUserInfo.currentState) {
+    // Load initial data from localStorage if available
+    const storedUserInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+    if (storedUserInfo) {
+      setUserInfo(storedUserInfo);
       setUserState(storedUserInfo.currentState);
     }
 
-    // Fetch daily match
-    fetchDailyMatch(token);
-    fetchUserStats(token);
-    fetchNotifications(token);
-    fetchCurrentUserInfo(token);
-  }, [navigate, fetchDailyMatch]);
+    let isMounted = true;
+    let refreshInterval = null;
+
+    const loadData = async () => {
+      if (!isMounted) return;
+      
+      try {
+        await fetchDailyMatch();
+      } catch (error) {
+        console.error('Error in initial data load:', error);
+        if (isMounted) {
+          setError(error.message || 'Failed to load dashboard data');
+        }
+      }
+    };
+    
+    // Initial load
+    loadData();
+    
+    // Set up polling or refresh interval if needed
+    refreshInterval = setInterval(() => {
+      if (isMounted) {
+        loadData();
+      }
+    }, 5 * 60 * 1000); // Refresh every 5 minutes
+    
+    // Cleanup function
+    return () => {
+      isMounted = false;
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+      }
+    };
+  }, [fetchDailyMatch, navigate]);
 
   // Countdown timer for reflection period
   useEffect(() => {
@@ -227,39 +271,41 @@ const Dashboard = () => {
   };
 
   // Fetch current user info from backend
-  const fetchCurrentUserInfo = async (token) => {
+  const fetchCurrentUserInfo = async () => {
     try {
       console.log('Fetching current user info...');
       const data = await authAPI.getCurrentUser();
       console.log('Current user data:', data);
       
-      if (data) {
-        const updatedUser = { 
-          ...data,
-          // Ensure we have all required fields with defaults
-          name: data.name || 'User',
-          email: data.email || '',
-          profilePicture: data.profilePicture || '',
-          totalMatches: data.totalMatches || 0,
-          successfulConnections: data.successfulConnections || 0,
-          averageCompatibility: data.averageCompatibility || 0,
-          daysActive: data.daysActive || 0
-        };
-        
-        setUserInfo(updatedUser);
-        localStorage.setItem('userInfo', JSON.stringify(updatedUser));
-        
-        // Also update user stats
-        setUserStats({
-          totalMatches: updatedUser.totalMatches,
-          successfulConnections: updatedUser.successfulConnections,
-          averageCompatibility: updatedUser.averageCompatibility,
-          daysActive: updatedUser.daysActive
-        });
-        
-        return updatedUser;
+      if (!data) {
+        throw new Error('No user data received');
       }
-      return null;
+      
+      const updatedUser = { 
+        ...data,
+        // Ensure we have all required fields with defaults
+        name: data.name || 'User',
+        email: data.email || '',
+        profilePicture: data.profilePicture || '',
+        totalMatches: data.totalMatches || 0,
+        successfulConnections: data.successfulConnections || 0,
+        averageCompatibility: data.averageCompatibility || 0,
+        daysActive: data.daysActive || 0
+      };
+      
+      setUserInfo(updatedUser);
+      localStorage.setItem('userInfo', JSON.stringify(updatedUser));
+      
+      // Also update user stats
+      setUserStats({
+        totalMatches: updatedUser.totalMatches,
+        successfulConnections: updatedUser.successfulConnections,
+        averageCompatibility: updatedUser.averageCompatibility,
+        daysActive: updatedUser.daysActive
+      });
+      
+      return updatedUser;
+      
     } catch (error) {
       console.error('Error fetching current user info:', {
         message: error.message,
@@ -269,18 +315,24 @@ const Dashboard = () => {
       });
       
       // If it's an auth error, clear local storage and redirect to login
-      if (error.message.includes('401') || error.message.includes('token') || error.message.includes('session')) {
+      if (error.status === 401 || error.message.includes('token') || error.message.includes('session')) {
         localStorage.removeItem('token');
         localStorage.removeItem('userInfo');
-        navigate('/login');
+        // Use window.location to ensure full page reload
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
       }
       
-      throw error; // Re-throw to be handled by the caller
+      // Re-throw with a more user-friendly message
+      const friendlyError = new Error(error.message || 'Failed to load user information');
+      friendlyError.status = error.status || 0;
+      throw friendlyError;
     }
   };
 
   // Fetch real chat activity data
-  const fetchChatActivity = async (token) => {
+  const fetchChatActivity = async () => {
     try {
       console.log('Fetching chat activity...');
       const data = await notificationsAPI.getActivity();
@@ -297,6 +349,7 @@ const Dashboard = () => {
         setChatMessageCount(data.totalMessages || 0);
         setActivityData(data.activityData || []);
       }
+      return data;
     } catch (error) {
       console.error('Error fetching chat activity:', error);
       // Set default values on error
@@ -314,7 +367,7 @@ const Dashboard = () => {
   };
 
   // Fetch notifications
-  const fetchNotifications = async (token) => {
+  const fetchNotifications = async () => {
     try {
       console.log('Fetching notifications...');
       const data = await notificationsAPI.getNotifications();
@@ -324,6 +377,7 @@ const Dashboard = () => {
         setNotifications(data.notifications || []);
         setUnreadCount(data.unreadCount || 0);
       }
+      return data;
     } catch (error) {
       console.error('Error fetching notifications:', error);
       // Set default values on error
