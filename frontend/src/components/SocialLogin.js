@@ -2,7 +2,7 @@ import React from 'react';
 import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
 import { FcGoogle } from 'react-icons/fc';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../services/api';
+import axios from 'axios';
 
 const SocialLogin = ({ onSuccess, onError }) => {
   const navigate = useNavigate();
