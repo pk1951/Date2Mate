@@ -159,7 +159,6 @@ app.get('/health', (req, res) => {
 // Import routes
 const userRoutes = require('./routes/userRoutes');
 const authRoutes = require('./routes/authRoutes');
-const profileRoutes = require('./routes/profileRoutes');
 const matchRoutes = require('./routes/matchRoutes');
 const chatRoutes = require('./routes/chatRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
@@ -169,7 +168,6 @@ const socialAuthRoutes = require('./routes/socialAuthRoutes');
 app.use('/api/users', userRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/auth', socialAuthRoutes); // Social auth routes
-app.use('/api/profile', profileRoutes);
 app.use('/api/matches', matchRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/upload', uploadRoutes);
