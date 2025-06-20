@@ -14,27 +14,16 @@ const app = express();
 const server = http.createServer(app);
 
 // CORS configuration for production
-const allowedOrigins = [
-  'http://localhost:3000',
-  'http://localhost:3001',
-  'https://date2matee.vercel.app',
-  'https://date2matee-qjc21ri3a-pes2ug22cs413s-projects.vercel.app'
-];
-
 const corsOptions = {
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-      return callback(new Error(msg), false);
-    }
-    return callback(null, true);
-  },
+  origin: [
+    'https://date2mate.vercel.app', // Production frontend
+    'http://localhost:3000',         // Local development
+    'http://localhost:3001'
+  ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Content-Length', 'Authorization']
 };
 
 // Set up Socket.io

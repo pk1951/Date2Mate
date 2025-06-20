@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { FaUser, FaEnvelope, FaLock, FaBirthdayCake, FaVenusMars, FaMapMarkerAlt, FaSpinner, FaHeart } from 'react-icons/fa';
 import { toast } from 'react-toastify';
@@ -6,6 +6,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import '../styles/Auth.css';
 import '../styles/AnimatedAuth.css';
 import DailyQuote from '../components/DailyQuote';
+import { authAPI } from '../services/api';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -15,15 +16,30 @@ const Register = () => {
     confirmPassword: '',
     age: '',
     gender: '',
-    location: ''
+    location: '',
+    locationDetails: {}
   });
   
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [locationSuggestions, setLocationSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const navigate = useNavigate();
 
   const { name, email, password, confirmPassword, age, gender, location } = formData;
+
+  useEffect(() => {
+    // Load Google Maps Places API
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&libraries=places`;
+    script.async = true;
+    document.body.appendChild(script);
+
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
 
   const validateForm = () => {
     const newErrors = {};
@@ -53,10 +69,48 @@ const Register = () => {
     }
     
     if (!gender) newErrors.gender = 'Gender is required';
-    if (!location.trim()) newErrors.location = 'Location is required';
+    if (!location) newErrors.location = 'Location is required';
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const handleLocationSelect = (suggestion) => {
+    setFormData({
+      ...formData,
+      location: suggestion.description,
+      locationDetails: {
+        placeId: suggestion.place_id,
+        mainText: suggestion.structured_formatting.main_text,
+        secondaryText: suggestion.structured_formatting.secondary_text || ''
+      }
+    });
+    setShowSuggestions(false);
+  };
+
+  const handleLocationChange = async (e) => {
+    const value = e.target.value;
+    setFormData({ ...formData, location: value });
+    
+    if (value.length > 2) {
+      try {
+        const service = new window.google.maps.places.AutocompleteService();
+        service.getPlacePredictions(
+          { input: value, types: ['(cities)'] },
+          (predictions, status) => {
+            if (status === 'OK' && predictions) {
+              setLocationSuggestions(predictions);
+              setShowSuggestions(true);
+            }
+          }
+        );
+      } catch (err) {
+        console.error('Error fetching location suggestions:', err);
+      }
+    } else {
+      setLocationSuggestions([]);
+      setShowSuggestions(false);
+    }
   };
 
   const onChange = (e) => {
@@ -81,33 +135,25 @@ const Register = () => {
     setLoading(true);
     
     try {
-      const response = await fetch('http://localhost:5000/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name,
-          email,
-          password,
-          age: parseInt(age),
-          gender,
-          location
-        }),
+      const data = await authAPI.register({
+        name,
+        email,
+        password,
+        age: parseInt(age),
+        gender,
+        location: formData.locationDetails || location,
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Registration failed');
-      }
+      // Save user data and token to localStorage
+      localStorage.setItem('userInfo', JSON.stringify(data));
+      localStorage.setItem('token', data.token);
 
       // Show success message
-      toast.success('Account created successfully! Redirecting to login...');
+      toast.success('Account created successfully! Redirecting...');
       
-      // Redirect to login page after a short delay
+      // Redirect to profile setup after a short delay
       setTimeout(() => {
-        navigate('/login');
+        navigate('/profile-setup');
       }, 1500);
       
     } catch (error) {
@@ -124,6 +170,7 @@ const Register = () => {
       {/* Left Side - Branding and Animation */}
       <div className="auth-branding">
         <div className="branding-content">
+          {/* 1. Date2Mate */}
           <div className="logo-section">
             <h1 className="brand-title">
               <FaHeart className="heart-icon" />
@@ -131,183 +178,233 @@ const Register = () => {
             </h1>
           </div>
           
+          {/* 2. Find Your Perfect Match */}
           <h2 className="brand-tagline">Find Your Perfect Match</h2>
           
+          {/* 3. Description */}
           <p className="brand-description">
             Discover meaningful connections through mindful dating. One match per day, focused on quality over quantity.
           </p>
           
+          {/* 4. Daily Quote */}
           <DailyQuote />
+          
+          {/* Animated Hearts */}
+          <div className="hearts-container">
+            <div className="heart heart-1">❤️</div>
+            <div className="heart heart-2">💕</div>
+            <div className="heart heart-3">💖</div>
+            <div className="heart heart-4">💝</div>
+            <div className="heart heart-5">💗</div>
+            <div className="heart heart-6">💓</div>
+            <div className="heart heart-7">💞</div>
+            <div className="heart heart-8">💟</div>
+          </div>
         </div>
       </div>
 
-      {/* Right Side - Registration Form */}
-      <div className="auth-form-container">
-        <div className="auth-form-wrapper">
-          <h2>Create Your Account</h2>
-          <p className="form-subtitle">Join our community of mindful daters</p>
+      {/* Right Side - Register Form */}
+      <div className="auth-form-section">
+        <div className="auth-card">
+          <h2>Create Account</h2>
+          <p className="auth-subtitle">Join our mindful dating community</p>
+          
+          {Object.keys(errors).length > 0 && (
+            <div className="auth-error">
+              {Object.values(errors).map((error, index) => (
+                <div key={index} className="error-message">
+                  {error}
+                </div>
+              ))}
+            </div>
+          )}
           
           <form onSubmit={onSubmit} className="auth-form">
-            {/* Name Field */}
-            <div className="form-group">
-              <div className={`input-group ${errors.name ? 'error' : ''}`}>
-                <span className="input-icon">
-                  <FaUser />
-                </span>
+            <div className={`form-group ${errors.name ? 'error' : ''}`}>
+              <label htmlFor="name">
+                <FaUser className="input-icon" /> Full Name
+              </label>
+              <div className="input-with-icon">
                 <input
                   type="text"
+                  id="name"
                   name="name"
                   value={name}
                   onChange={onChange}
-                  placeholder="Full Name"
-                  className={`form-control ${errors.name ? 'is-invalid' : ''}`}
+                  className={errors.name ? 'error-input' : ''}
+                  placeholder="Enter your full name"
                   disabled={loading}
+                  autoComplete="name"
                 />
               </div>
-              {errors.name && <div className="error-message">{errors.name}</div>}
+              {errors.name && <span className="error-text">{errors.name}</span>}
             </div>
-
-            {/* Email Field */}
-            <div className="form-group">
-              <div className={`input-group ${errors.email ? 'error' : ''}`}>
-                <span className="input-icon">
-                  <FaEnvelope />
-                </span>
+            
+            <div className={`form-group ${errors.email ? 'error' : ''}`}>
+              <label htmlFor="email">
+                <FaEnvelope className="input-icon" /> Email
+              </label>
+              <div className="input-with-icon">
                 <input
                   type="email"
+                  id="email"
                   name="email"
                   value={email}
                   onChange={onChange}
-                  placeholder="Email Address"
-                  className={`form-control ${errors.email ? 'is-invalid' : ''}`}
+                  className={errors.email ? 'error-input' : ''}
+                  placeholder="Enter your email"
                   disabled={loading}
+                  autoComplete="email"
                 />
               </div>
-              {errors.email && <div className="error-message">{errors.email}</div>}
+              {errors.email && <span className="error-text">{errors.email}</span>}
             </div>
-
-            {/* Password Field */}
-            <div className="form-group">
-              <div className={`input-group ${errors.password ? 'error' : ''}`}>
-                <span className="input-icon">
-                  <FaLock />
-                </span>
-                <input
-                  type="password"
-                  name="password"
-                  value={password}
-                  onChange={onChange}
-                  placeholder="Password (min 6 characters)"
-                  className={`form-control ${errors.password ? 'is-invalid' : ''}`}
-                  disabled={loading}
-                />
+            
+            <div className="form-row">
+              <div className={`form-group ${errors.password ? 'error' : ''}`}>
+                <label htmlFor="password">
+                  <FaLock className="input-icon" /> Password
+                </label>
+                <div className="input-with-icon">
+                  <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    value={password}
+                    onChange={onChange}
+                    className={errors.password ? 'error-input' : ''}
+                    placeholder="Create password"
+                    disabled={loading}
+                    autoComplete="new-password"
+                  />
+                </div>
+                {errors.password && <span className="error-text">{errors.password}</span>}
               </div>
-              {errors.password && <div className="error-message">{errors.password}</div>}
-            </div>
-
-            {/* Confirm Password Field */}
-            <div className="form-group">
-              <div className={`input-group ${errors.confirmPassword ? 'error' : ''}`}>
-                <span className="input-icon">
-                  <FaLock />
-                </span>
-                <input
-                  type="password"
-                  name="confirmPassword"
-                  value={confirmPassword}
-                  onChange={onChange}
-                  placeholder="Confirm Password"
-                  className={`form-control ${errors.confirmPassword ? 'is-invalid' : ''}`}
-                  disabled={loading}
-                />
+              
+              <div className={`form-group ${errors.confirmPassword ? 'error' : ''}`}>
+                <label htmlFor="confirmPassword">
+                  <FaLock className="input-icon" /> Confirm
+                </label>
+                <div className="input-with-icon">
+                  <input
+                    type="password"
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    value={confirmPassword}
+                    onChange={onChange}
+                    className={errors.confirmPassword ? 'error-input' : ''}
+                    placeholder="Confirm password"
+                    disabled={loading}
+                    autoComplete="new-password"
+                  />
+                </div>
+                {errors.confirmPassword && <span className="error-text">{errors.confirmPassword}</span>}
               </div>
-              {errors.confirmPassword && <div className="error-message">{errors.confirmPassword}</div>}
             </div>
-
-            {/* Age Field */}
-            <div className="form-group">
-              <div className={`input-group ${errors.age ? 'error' : ''}`}>
-                <span className="input-icon">
-                  <FaBirthdayCake />
-                </span>
-                <input
-                  type="number"
-                  name="age"
-                  value={age}
-                  onChange={onChange}
-                  placeholder="Age"
-                  min="18"
-                  max="120"
-                  className={`form-control ${errors.age ? 'is-invalid' : ''}`}
-                  disabled={loading}
-                />
+            
+            <div className="form-row">
+              <div className={`form-group ${errors.age ? 'error' : ''}`}>
+                <label htmlFor="age">
+                  <FaBirthdayCake className="input-icon" /> Age
+                </label>
+                <div className="input-with-icon">
+                  <input
+                    type="number"
+                    id="age"
+                    name="age"
+                    value={age}
+                    onChange={onChange}
+                    className={errors.age ? 'error-input' : ''}
+                    placeholder="Age"
+                    min="18"
+                    max="100"
+                    disabled={loading}
+                  />
+                </div>
+                {errors.age && <span className="error-text">{errors.age}</span>}
               </div>
-              {errors.age && <div className="error-message">{errors.age}</div>}
-            </div>
-
-            {/* Gender Field */}
-            <div className="form-group">
-              <div className={`input-group ${errors.gender ? 'error' : ''}`}>
-                <span className="input-icon">
-                  <FaVenusMars />
-                </span>
-                <select
-                  name="gender"
-                  value={gender}
-                  onChange={onChange}
-                  className={`form-control ${errors.gender ? 'is-invalid' : ''}`}
-                  disabled={loading}
-                >
-                  <option value="">Select Gender</option>
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="other">Other</option>
-                  <option value="prefer-not-to-say">Prefer not to say</option>
-                </select>
+              
+              <div className={`form-group ${errors.gender ? 'error' : ''}`}>
+                <label htmlFor="gender">
+                  <FaVenusMars className="input-icon" /> Gender
+                </label>
+                <div className="select-wrapper">
+                  <select
+                    id="gender"
+                    name="gender"
+                    value={gender}
+                    onChange={onChange}
+                    className={errors.gender ? 'error-input' : ''}
+                    disabled={loading}
+                  >
+                    <option value="">Select gender</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="non-binary">Non-binary</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                {errors.gender && <span className="error-text">{errors.gender}</span>}
               </div>
-              {errors.gender && <div className="error-message">{errors.gender}</div>}
             </div>
-
-            {/* Location Field - Simplified to text input */}
-            <div className="form-group">
-              <div className={`input-group ${errors.location ? 'error' : ''}`}>
-                <span className="input-icon">
-                  <FaMapMarkerAlt />
-                </span>
+            
+            <div className={`form-group ${errors.location ? 'error' : ''}`}>
+              <label htmlFor="location">
+                <FaMapMarkerAlt className="input-icon" /> Location
+              </label>
+              <div className="input-with-icon location-input">
                 <input
                   type="text"
+                  id="location"
                   name="location"
                   value={location}
-                  onChange={onChange}
-                  placeholder="Your Location (e.g., New York, USA)"
-                  className={`form-control ${errors.location ? 'is-invalid' : ''}`}
+                  onChange={handleLocationChange}
+                  className={errors.location ? 'error-input' : ''}
+                  placeholder="Enter your city"
                   disabled={loading}
+                  autoComplete="off"
                 />
+                {showSuggestions && locationSuggestions.length > 0 && (
+                  <div className="suggestions-dropdown">
+                    {locationSuggestions.map((suggestion, index) => (
+                      <div
+                        key={index}
+                        className="suggestion-item"
+                        onClick={() => handleLocationSelect(suggestion)}
+                      >
+                        <div className="suggestion-main">{suggestion.structured_formatting.main_text}</div>
+                        <div className="suggestion-secondary">{suggestion.structured_formatting.secondary_text}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-              {errors.location && <div className="error-message">{errors.location}</div>}
+              {errors.location && <span className="error-text">{errors.location}</span>}
             </div>
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              className="btn btn-primary btn-block"
+            
+            <button 
+              type="submit" 
+              className="auth-button primary-button"
               disabled={loading || isSubmitting}
             >
               {loading ? (
                 <>
-                  <FaSpinner className="spinner" /> Creating Account...
+                  <FaSpinner className="spinner" />
+                  Creating account...
                 </>
               ) : (
                 'Create Account'
               )}
             </button>
           </form>
-
-          <div className="auth-footer">
-            Already have an account?{' '}
-            <Link to="/login" className="auth-link">
-              Sign In
-            </Link>
+          
+          <div className="auth-links">
+            <p>
+              Already have an account?{' '}
+              <Link to="/login" className="auth-link">
+                Sign in here
+              </Link>
+            </p>
           </div>
         </div>
       </div>
