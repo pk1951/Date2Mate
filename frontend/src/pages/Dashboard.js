@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaHeart, FaUser, FaComments, FaClock, FaChartLine, FaCog, FaSignOutAlt, FaBell, FaStar, FaUsers, FaCalendarAlt, FaMapMarkerAlt } from 'react-icons/fa';
 import ChatActivityGraph from '../components/ChatActivityGraph';
-import { matchesAPI, notificationsAPI, authAPI } from '../services/api';
+import { matchesAPI, authAPI } from '../services/api';
 import '../styles/Dashboard.css';
 
 const Dashboard = () => {
@@ -101,7 +101,7 @@ const Dashboard = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [navigate]);
 
   const fetchUserState = useCallback(async (token) => {
     try {

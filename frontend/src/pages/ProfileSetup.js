@@ -164,8 +164,6 @@ const ProfileSetup = () => {
     setError('');
     
     try {
-      const token = localStorage.getItem('token');
-      
       // Upload profile picture first if selected
       let profilePicturePath = null;
       if (profilePicture) {
