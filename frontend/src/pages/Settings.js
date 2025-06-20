@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { authAPI, uploadAPI } from '../services/api';
 import '../styles/Settings.css';
 
 const Settings = () => {
@@ -50,23 +51,11 @@ const Settings = () => {
   });
 
   const fetchUserProfile = useCallback(async () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      navigate('/login');
-      return;
-    }
-
     try {
-      const response = await fetch('http://localhost:5000/api/auth/profile', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to fetch profile');
+      const data = await authAPI.getCurrentUser();
+      
+      if (!data) {
+        throw new Error('Failed to fetch profile');
       }
 
       setFormData({
@@ -189,32 +178,24 @@ const Settings = () => {
   };
 
   // Upload profile picture
-  const uploadProfilePicture = async () => {
-    if (!profilePicture) return null;
-
-    const token = localStorage.getItem('token');
-    const formData = new FormData();
-    formData.append('profilePicture', profilePicture);
+  const handleProfileUpdate = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    setError('');
+    setSuccess('');
 
     try {
-      const response = await fetch('http://localhost:5000/api/upload/profile-picture', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to upload profile picture');
+      const data = await authAPI.updateProfile(formData);
+      
+      if (!data) {
+        throw new Error('Failed to update profile');
       }
 
       return data.profilePicture;
     } catch (error) {
       setError(error.message);
-      return null;
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -234,23 +215,15 @@ const Settings = () => {
       // Upload profile picture first if selected
       let profilePicturePath = null;
       if (profilePicture) {
-        profilePicturePath = await uploadProfilePicture();
-        if (!profilePicturePath) {
-          setSaving(false);
-          return;
-        }
+        const formData = new FormData();
+        formData.append('profilePicture', profilePicture);
+        const response = await uploadAPI.uploadProfilePicture(formData);
+        profilePicturePath = response.data.profilePicture;
       }
 
-      const response = await fetch('http://localhost:5000/api/auth/profile', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          ...formData,
-          profilePicture: profilePicturePath || formData.profilePicture,
-        }),
+      const response = await authAPI.updateProfile({
+        ...formData,
+        profilePicture: profilePicturePath || formData.profilePicture,
       });
 
       const data = await response.json();
@@ -419,12 +392,16 @@ const Settings = () => {
                   />
                 ) : formData.profilePicture ? (
                   <img 
-                    src={formData.profilePicture.startsWith('http') ? formData.profilePicture : `http://localhost:5000${formData.profilePicture}`} 
+                    src={formData.profilePicture ? 
+                      (formData.profilePicture.startsWith('http') ? 
+                        formData.profilePicture : 
+                        `${process.env.REACT_APP_API_BASE_URL || ''}${formData.profilePicture}`) : 
+                      '/default-avatar.png'} 
                     alt="Profile" 
-                    className="profile-image"
+                    className="profile-picture"
                     onError={(e) => {
-                      e.target.style.display = 'none';
-                      e.target.nextSibling.style.display = 'block';
+                      e.target.onerror = null;
+                      e.target.src = '/default-avatar.png';
                     }}
                   />
                 ) : null}

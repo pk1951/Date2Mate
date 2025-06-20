@@ -689,7 +689,13 @@ const Dashboard = () => {
                   <div className="match-photo-container">
                   <div 
                       className="match-photo enhanced" 
-                    style={{ backgroundImage: `url(${matchedUser.profilePicture ? 'http://localhost:5000' + matchedUser.profilePicture : '/default-avatar.png'})` }}
+                    style={{ 
+                      backgroundImage: `url(${matchedUser.profilePicture ? 
+                        (matchedUser.profilePicture.startsWith('http') ? 
+                          matchedUser.profilePicture : 
+                          `${process.env.REACT_APP_API_BASE_URL || ''}${matchedUser.profilePicture}`) : 
+                        '/default-avatar.png'})` 
+                    }}
                     >
                       <div className="photo-overlay">
                         <FaUser className="photo-icon" />
