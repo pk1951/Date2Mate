@@ -9,7 +9,7 @@ const SocialLogin = ({ onSuccess, onError }) => {
 
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
-      const response = await api.post('/api/auth/google', {
+      const response = await axios.post('https://date2mate.onrender.com/api/auth/google', {
         token: credentialResponse.credential
       });
       
