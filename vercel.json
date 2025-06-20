@@ -1,0 +1,17 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "vercel-build.sh",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "frontend/build"
+      }
+    }
+  ],
+  "routes": [
+    { "handle": "filesystem" },
+    { "src": "/api/(.*)", "dest": "https://date2mate.onrender.com/api/$1" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
+}

@@ -27,6 +27,9 @@
   ],
   "author": "Date2Mate Team",
   "license": "MIT",
+  "dependencies": {
+    "concurrently": "^8.2.0"
+  },
   "devDependencies": {
     "concurrently": "^8.2.2"
   },

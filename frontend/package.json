@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "description": "Date2Mate - Mindful Dating App Frontend",
   "private": true,
+  "homepage": "/",
+  "main": "src/index.js",
   "dependencies": {
     "@react-google-maps/api": "^2.20.6",
     "@testing-library/dom": "^10.4.0",
