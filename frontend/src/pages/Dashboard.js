@@ -56,108 +56,89 @@ const Dashboard = () => {
       }
 
       console.log('Fetching user data...');
-      try {
-        // First get the current user data using authAPI
-        const userData = await authAPI.getCurrentUser();
-        console.log('Successfully fetched current user:', userData);
-        
-        if (!userData) {
-          throw new Error('Failed to load user data');
-        }
-        
-        // Update user info and stats
-        const userInfo = {
-          ...userData,
-          // Ensure all required fields have default values
-          name: userData.name || 'User',
-          email: userData.email || '',
-          profilePicture: userData.profilePicture || '',
-          totalMatches: userData.totalMatches || 0,
-          successfulConnections: userData.successfulConnections || 0,
-          averageCompatibility: userData.averageCompatibility || 0,
-          daysActive: userData.daysActive || 0
-        };
-        
-        // Save user info to localStorage for quick access
-        localStorage.setItem('userInfo', JSON.stringify(userInfo));
-        
-        setUserInfo(userInfo);
-        setUserStats({
-          totalMatches: userInfo.totalMatches,
-          successfulConnections: userInfo.successfulConnections,
-          averageCompatibility: userInfo.averageCompatibility,
-          daysActive: userInfo.daysActive
-        });
-        
-        return userInfo;
-        
-        // Then fetch match data
-        console.log('Fetching match data...');
-        try {
-          const matchData = await matchesAPI.getDailyMatches();
-          console.log('Successfully fetched daily matches:', matchData);
-          
-          if (matchData) {
-            setMatchData(matchData);
-            
-            if (matchData.currentState === 'frozen' && matchData.reflectionPeriodEnd) {
-              const endTime = new Date(matchData.reflectionPeriodEnd).getTime();
-              const now = new Date().getTime();
-              const timeRemaining = Math.max(0, Math.floor((endTime - now) / 1000));
-              setReflectionTimeRemaining(timeRemaining);
-              setUserState('frozen');
-              setShowReflectionPrompts(true);
-            } else if (matchData.currentMatch) {
-              setCurrentMatch(matchData.currentMatch);
-              setUserState('in_conversation');
-            } else {
-              setUserState('available');
-            }
-          } else {
-            setUserState('available');
-          }
-          
-          // Finally, fetch additional data
-          console.log('Fetching additional data...');
-          try {
-            await Promise.all([
-              fetchChatActivity(),
-              fetchNotifications()
-            ]);
-          } catch (additionalDataError) {
-            console.warn('Error fetching additional data (non-critical):', additionalDataError);
-            // Continue even if additional data fails to load
-          }
-          
-          return { success: true };
-          
-        } catch (matchError) {
-          console.error('Error fetching match data:', matchError);
-          setUserState('available');
-          throw new Error(`Failed to load match data: ${matchError.message || 'Unknown error'}`);
-        }
-        
-      } catch (userError) {
-        console.error('Error fetching user data:', userError);
-        throw new Error(`Failed to load user data: ${userError.message || 'Unknown error'}`);
+      // First get the current user data using authAPI
+      const userData = await authAPI.getCurrentUser();
+      console.log('Successfully fetched current user:', userData);
+      
+      if (!userData) {
+        throw new Error('Failed to load user data');
       }
-
-    } catch (err) {
-      console.error('Error in fetchDailyMatch:', err);
-      const errorMessage = err.message || 'Failed to load dashboard data. Please try again later.';
-      console.error('Error details:', {
-        message: err.message,
-        response: err.response,
-        stack: err.stack
+      
+      // Update user info and stats
+      const userInfo = {
+        ...userData,
+        // Ensure all required fields have default values
+        name: userData.name || 'User',
+        email: userData.email || '',
+        profilePicture: userData.profilePicture || '',
+        totalMatches: userData.totalMatches || 0,
+        successfulConnections: userData.successfulConnections || 0,
+        averageCompatibility: userData.averageCompatibility || 0,
+        daysActive: userData.daysActive || 0
+      };
+      
+      // Save user info to localStorage for quick access
+      localStorage.setItem('userInfo', JSON.stringify(userInfo));
+      
+      setUserInfo(userInfo);
+      setUserStats({
+        totalMatches: userInfo.totalMatches,
+        successfulConnections: userInfo.successfulConnections,
+        averageCompatibility: userInfo.averageCompatibility,
+        daysActive: userInfo.daysActive
       });
+      
+      // Fetch match data
+      console.log('Fetching match data...');
+      const matchData = await matchesAPI.getDailyMatches();
+      console.log('Successfully fetched daily matches:', matchData);
+      
+      if (matchData) {
+        setMatchData(matchData);
+        
+        if (matchData.currentState === 'frozen' && matchData.reflectionPeriodEnd) {
+          const endTime = new Date(matchData.reflectionPeriodEnd).getTime();
+          const now = new Date().getTime();
+          const timeRemaining = Math.max(0, Math.floor((endTime - now) / 1000));
+          setReflectionTimeRemaining(timeRemaining);
+          setUserState('frozen');
+          setShowReflectionPrompts(true);
+        } else if (matchData.currentMatch) {
+          setCurrentMatch(matchData.currentMatch);
+          setUserState('in_conversation');
+        } else {
+          setUserState('available');
+        }
+      } else {
+        setUserState('available');
+      }
+      
+      // Finally, fetch additional data
+      console.log('Fetching additional data...');
+      try {
+        await Promise.all([
+          fetchChatActivity(),
+          fetchNotifications()
+        ]);
+      } catch (additionalDataError) {
+        console.warn('Error fetching additional data (non-critical):', additionalDataError);
+        // Continue even if additional data fails to load
+      }
+      
+    } catch (error) {
+      console.error('Error in fetchDailyMatch:', error);
+      const errorMessage = error.message || 'Failed to load dashboard data. Please try again later.';
       setError(errorMessage);
+      setUserState('error');
       
       // If it's an auth error, redirect to login
-      if (err.message.includes('401') || err.message.includes('token') || err.message.includes('session')) {
+      if (error.message.includes('401') || error.message.includes('token') || error.message.includes('session')) {
         localStorage.removeItem('token');
         localStorage.removeItem('userInfo');
         navigate('/login');
       }
+      
+      throw error;
     } finally {
       setLoading(false);
     }
