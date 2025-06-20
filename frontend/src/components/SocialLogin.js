@@ -58,6 +58,11 @@ const SocialLogin = ({ onSuccess, onError }) => {
     }
   };
 
+  const handleFacebookFailure = (error) => {
+    console.error('Facebook login failed:', error);
+    if (onError) onError(new Error('Failed to login with Facebook'));
+  };
+
   return (
     <div className="social-login-container">
       <div className="divider">
@@ -84,21 +89,34 @@ const SocialLogin = ({ onSuccess, onError }) => {
           />
         </GoogleOAuthProvider>
         
-        <FacebookLogin
+        <FacebookLoginButton
           appId={process.env.REACT_APP_FACEBOOK_APP_ID}
-          fields="name,email,picture"
-          callback={handleFacebookSuccess}
-          onFailure={handleFacebookFailure}
-          render={renderProps => (
-            <button 
-              className="social-btn facebook-btn"
-              onClick={renderProps.onClick}
-            >
-              <FaFacebook className="social-icon" />
-              Continue with Facebook
-            </button>
-          )}
-        />
+          onSuccess={handleFacebookSuccess}
+          onFail={handleFacebookFailure}
+          className="social-btn facebook-btn"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '100%',
+            padding: '0.5rem 1rem',
+            border: '1px solid #e2e8f0',
+            borderRadius: '0.375rem',
+            backgroundColor: '#fff',
+            color: '#374151',
+            fontSize: '0.875rem',
+            fontWeight: 500,
+            cursor: 'pointer',
+            boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+            transition: 'all 0.2s',
+            '&:hover': {
+              backgroundColor: '#f9fafb',
+            },
+          }}
+        >
+          <FaFacebook className="social-icon" style={{ color: '#1877f2', marginRight: '0.5rem' }} />
+          Continue with Facebook
+        </FacebookLoginButton>
       </div>
     </div>
   );
