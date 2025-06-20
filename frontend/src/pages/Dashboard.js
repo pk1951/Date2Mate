@@ -52,7 +52,7 @@ const Dashboard = () => {
 
       const [matchData, userData] = await Promise.all([
         matchesAPI.getDailyMatches(),
-        authAPI.getProfile()
+        authAPI.getCurrentUser()
       ]);
 
       if (matchData) {

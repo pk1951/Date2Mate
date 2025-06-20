@@ -4,9 +4,12 @@ const API_BASE_URL = 'https://date2mate.onrender.com';
 // For local development, you can uncomment the line below:
 // const API_BASE_URL = 'http://localhost:5000';
 
+// Ensure API_BASE_URL ends with a slash
+const BASE_URL = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
+
 // Helper function to handle API requests
 const apiRequest = async (endpoint, options = {}) => {
-  const url = `${API_BASE_URL}${endpoint}`;
+  const url = `${BASE_URL}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
   
   // Add authorization header if token exists
   const token = localStorage.getItem('token');
