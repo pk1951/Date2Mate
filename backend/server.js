@@ -13,22 +13,42 @@ connectDB();
 const app = express();
 const server = http.createServer(app);
 
-// CORS configuration for production
+// CORS configuration
+const allowedOrigins = [
+  'https://date2-mate.vercel.app', // Production frontend (note the hyphen)
+  'http://localhost:3000',         // Local development
+  'http://localhost:3001'
+];
+
 const corsOptions = {
-  origin: [
-    'https://date2mate.vercel.app', // Production frontend
-    'http://localhost:3000',         // Local development
-    'http://localhost:3001'
-  ],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = `The CORS policy for this site does not allow access from the specified origin: ${origin}`;
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  exposedHeaders: ['Content-Length', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  exposedHeaders: ['Content-Length', 'Authorization'],
+  maxAge: 600, // Cache preflight request for 10 minutes
+  optionsSuccessStatus: 204 // Return 204 for OPTIONS requests
 };
 
-// Set up Socket.io
+// Handle preflight requests
+app.options('*', cors(corsOptions));
+
+// Set up Socket.io with CORS
 const io = new Server(server, {
-  cors: corsOptions,
+  cors: {
+    origin: allowedOrigins,
+    methods: ['GET', 'POST'],
+    credentials: true
+  },
   pingTimeout: 60000, // 60 seconds
   pingInterval: 25000, // 25 seconds
   transports: ['websocket', 'polling'],
@@ -36,7 +56,7 @@ const io = new Server(server, {
   maxHttpBufferSize: 1e8 // 100 MB
 });
 
-// Middleware
+// Apply CORS to all routes
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
