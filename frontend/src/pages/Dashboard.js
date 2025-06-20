@@ -91,7 +91,15 @@ const Dashboard = () => {
 
     } catch (err) {
       console.error('Error in fetchDailyMatch:', err);
-      setError(err.response?.data?.message || 'Failed to load dashboard data');
+      const errorMessage = err.response?.data?.message || 
+                         err.message || 
+                         'Failed to load dashboard data. Please try again later.';
+      console.error('Error details:', {
+        message: err.message,
+        response: err.response,
+        stack: err.stack
+      });
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

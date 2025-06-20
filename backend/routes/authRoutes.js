@@ -10,7 +10,7 @@ const {
   verifyResetToken,
   resetPassword
 } = require('../controllers/authController');
-const { protect } = require('../midlleware/authMiddleware');
+const { protect } = require('../middleware/authMiddleware');
 
 // Public routes
 router.post('/register', registerUser);

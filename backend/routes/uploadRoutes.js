@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const uploadMiddleware = require('../midlleware/uploadMiddleware');
-const { protect } = require('../midlleware/authMiddleware');
+const uploadMiddleware = require('../middleware/uploadMiddleware');
+const { protect } = require('../middleware/authMiddleware');
 const User = require('../models/userModel');
 const fs = require('fs');
 const path = require('path');
