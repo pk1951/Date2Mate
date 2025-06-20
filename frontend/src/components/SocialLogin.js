@@ -86,17 +86,13 @@ const SocialLogin = ({ onSuccess, onError }) => {
         
         <FacebookLogin
           appId={process.env.REACT_APP_FACEBOOK_APP_ID}
-          autoLoad={false}
           fields="name,email,picture"
           callback={handleFacebookSuccess}
-          onFailure={(error) => {
-            console.error('Facebook login failed:', error);
-            if (onError) onError(new Error('Facebook login failed'));
-          }}
-          render={({ onClick }) => (
+          onFailure={handleFacebookFailure}
+          render={renderProps => (
             <button 
               className="social-btn facebook-btn"
-              onClick={onClick}
+              onClick={renderProps.onClick}
             >
               <FaFacebook className="social-icon" />
               Continue with Facebook
