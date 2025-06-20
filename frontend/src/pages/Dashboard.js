@@ -39,35 +39,62 @@ const Dashboard = () => {
     author: "Sam Keen"
   });
 
-  // Enhanced fetch daily match data with better error handling
-  const fetchDailyMatch = useCallback(async () => {
+  // Enhanced fetch daily match data with better error handling and retry logic
+  const fetchDailyMatch = useCallback(async (retryCount = 0) => {
+    const MAX_RETRIES = 2;
     setLoading(true);
     setError('');
-    console.log('Starting to fetch dashboard data...');
     
     try {
+      // 1. Check authentication
       const token = localStorage.getItem('token');
-      console.log('Token found in localStorage:', !!token);
-      
       if (!token) {
-        console.log('No token found, redirecting to login');
+        console.log('No authentication token found, redirecting to login');
         navigate('/login');
         return;
       }
 
+      // 2. Fetch user data with retry logic
       console.log('Fetching user data...');
-      // First get the current user data using authAPI
-      const userData = await authAPI.getCurrentUser();
-      console.log('Successfully fetched current user:', userData);
-      
-      if (!userData) {
-        throw new Error('Failed to load user data');
+      let userData;
+      try {
+        userData = await authAPI.getCurrentUser();
+        if (!userData) {
+          throw new Error('No user data received');
+        }
+      } catch (userError) {
+        console.error('Error fetching user data:', userError);
+        
+        // Handle different error types
+        if (userError.status === 0) {
+          setError('Unable to connect to the server. Please check your internet connection.');
+          
+          // Auto-retry for network errors
+          if (retryCount < MAX_RETRIES) {
+            console.log(`Retrying... (${retryCount + 1}/${MAX_RETRIES})`);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            return fetchDailyMatch(retryCount + 1);
+          }
+        } else if (userError.status === 401) {
+          // Token expired or invalid
+          localStorage.removeItem('token');
+          localStorage.removeItem('userInfo');
+          navigate('/login');
+          return;
+        } else if (userError.status >= 500) {
+          setError('Server error. Please try again later.');
+        } else {
+          setError(userError.message || 'Failed to load user profile');
+        }
+        
+        // Don't proceed if there was an error loading user data
+        setLoading(false);
+        return;
       }
       
-      // Update user info and stats
+      // 3. Process and store user data
       const userInfo = {
         ...userData,
-        // Ensure all required fields have default values
         name: userData.name || 'User',
         email: userData.email || '',
         profilePicture: userData.profilePicture || '',
@@ -77,9 +104,7 @@ const Dashboard = () => {
         daysActive: userData.daysActive || 0
       };
       
-      // Save user info to localStorage for quick access
       localStorage.setItem('userInfo', JSON.stringify(userInfo));
-      
       setUserInfo(userInfo);
       setUserStats({
         totalMatches: userInfo.totalMatches,
@@ -88,10 +113,19 @@ const Dashboard = () => {
         daysActive: userInfo.daysActive
       });
       
-      // Fetch match data
+      // 4. Fetch match data with error handling
       console.log('Fetching match data...');
-      const matchData = await matchesAPI.getDailyMatches();
-      console.log('Successfully fetched daily matches:', matchData);
+      let matchData;
+      try {
+        matchData = await matchesAPI.getDailyMatches();
+        console.log('Match data received:', matchData);
+      } catch (matchError) {
+        console.error('Error fetching matches:', matchError);
+        // Don't show error for match errors, just log and continue with null
+        setMatchData(null);
+      } finally {
+        setLoading(false);
+      }
       
       if (matchData) {
         setMatchData(matchData);

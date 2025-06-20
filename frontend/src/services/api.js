@@ -12,8 +12,6 @@ const apiRequest = async (endpoint, options = {}) => {
   const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const url = `${BASE_URL}${normalizedEndpoint}`;
   
-  console.log(`API Request: ${options.method || 'GET'} ${url}`);
-  
   // Add authorization header if token exists
   const token = localStorage.getItem('token');
   const headers = {
@@ -34,20 +32,34 @@ const apiRequest = async (endpoint, options = {}) => {
   // Add body if present (except for GET/HEAD requests)
   if (options.body && !['GET', 'HEAD'].includes(options.method || 'GET')) {
     requestOptions.body = JSON.stringify(options.body);
-    console.log('Request body:', requestOptions.body);
   }
+  
+  // Log request details
+  console.group(`API Request: ${options.method || 'GET'} ${url}`);
+  console.log('Headers:', headers);
+  if (requestOptions.body) console.log('Body:', requestOptions.body);
 
   try {
-    const response = await fetch(url, requestOptions);
-    console.log(`Response status: ${response.status} ${response.statusText}`);
+    let response;
+    try {
+      response = await fetch(url, requestOptions);
+      console.log(`Response status: ${response.status} ${response.statusText}`);
+    } catch (networkError) {
+      console.error('Network error:', networkError);
+      throw {
+        status: 0,
+        message: 'Network error. Please check your internet connection.',
+        originalError: networkError
+      };
+    }
     
     // Handle empty responses (like 204 No Content)
     const contentType = response.headers.get('content-type');
     let data;
     
     try {
-      // Only try to parse as JSON if the content type is JSON
-      if (contentType && contentType.includes('application/json')) {
+      // Only try to parse as JSON if the content type is JSON or response is not empty
+      if (contentType && contentType.includes('application/json') || response.status !== 204) {
         data = await response.json();
         console.log('Response data:', data);
       } else if (response.status === 204) {
@@ -68,33 +80,48 @@ const apiRequest = async (endpoint, options = {}) => {
       throw parseError;
     }
 
+    // Handle HTTP error responses
     if (!response.ok) {
-      const error = new Error(data.message || `Request failed with status ${response.status}`);
+      const error = new Error(data?.message || `HTTP error! status: ${response.status}`);
       error.status = response.status;
-      error.response = data;
+      error.data = data;
+      
+      // Auto-logout on 401 Unauthorized
+      if (response.status === 401) {
+        console.log('Authentication failed, logging out...');
+        // Clear auth data
+        localStorage.removeItem('token');
+        localStorage.removeItem('userInfo');
+        // Redirect to login will be handled by the component
+      }
+      
       throw error;
     }
-
-    return data;
+    
+    return data || {}; // Always return an object to prevent undefined errors
   } catch (error) {
-    const errorDetails = {
+    console.groupEnd(); // Close the API request log group
+    
+    // Log detailed error information
+    console.error('API request failed:', {
+      endpoint,
       url,
-      error: error.message,
+      method: options.method || 'GET',
       status: error.status,
-      response: error.response,
-      stack: error.stack,
-    };
+      message: error.message,
+      data: error.data
+    });
     
-    console.error('API Request Failed:', errorDetails);
+    // Enhance the error with more context
+    error.endpoint = endpoint;
+    error.url = url;
+    error.method = options.method || 'GET';
     
-    // Enhance error message for common issues
-    if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+    // Provide more user-friendly error messages
+    if (error.status === 0) {
       error.message = 'Unable to connect to the server. Please check your internet connection.';
-      error.status = error.status || 0;
     } else if (error.status === 401) {
       error.message = 'Your session has expired. Please log in again.';
-      // Clear auth data and redirect to login
-      localStorage.removeItem('token');
       localStorage.removeItem('userInfo');
       // Use window.location instead of navigate to ensure full page reload
       if (window.location.pathname !== '/login') {
