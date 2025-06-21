@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaHeart, FaUser, FaComments, FaClock, FaChartLine, FaCog, FaSignOutAlt, FaBell, FaStar, FaUsers, FaCalendarAlt, FaMapMarkerAlt } from 'react-icons/fa';
 import ChatActivityGraph from '../components/ChatActivityGraph';
+import { matchesAPI, notificationsAPI, statsAPI } from '../services/api';
 import '../styles/Dashboard.css';
 
 const DashboardEnhanced = () => {
@@ -100,79 +101,132 @@ const DashboardEnhanced = () => {
               details: data.lastFeedback.details,
               time: 'Just now',
               read: false,
-              timestamp: new Date(data.lastFeedback.receivedAt)
+              timestamp: new Date()
             };
             setNotifications(prev => [feedbackNotification, ...prev]);
             setUnreadCount(prev => prev + 1);
-            
-            // Extract match data for activity graph
-            if (data.stateStartTime) {
-              const matchStartTime = new Date(data.stateStartTime);
-              const matchEndTime = new Date(data.lastFeedback.receivedAt);
-              const durationHours = Math.ceil((matchEndTime - matchStartTime) / (1000 * 60 * 60));
-              
-              setMatchData({
-                startTime: matchStartTime,
-                endTime: matchEndTime,
-                duration: durationHours
-              });
-              setChatDuration(durationHours);
-              
-              // Estimate message count based on duration (for demo purposes)
-              // In real app, this would come from the backend
-              const estimatedMessages = Math.floor(durationHours * 15); // 15 messages per hour average
-              setChatMessageCount(estimatedMessages);
-            }
           }
+          return;
         }
+        
+        // Handle other error cases
+        if (data.message === 'No match available for today') {
+          // Check for pinned matches if no match for today
+          const pinnedResponse = await matchesAPI.getMatchHistory();
+          const pinnedMatches = pinnedResponse.matches.filter(match => match.status === 'pinned');
+          
+          if (pinnedMatches.length > 0) {
+            // Use the most recent pinned match
+            const latestPinned = pinnedMatches[0];
+            setCurrentMatch(latestPinned);
+            setMatchedUser(latestPinned.matchedUser);
+            setUserState('pinned');
+          }
+          return;
+        }
+        
         throw new Error(data.message || 'Failed to fetch daily match');
       }
-
-      setCurrentMatch(data.match);
-      setMatchedUser(data.matchedUser);
-      setUserState(data.match.status === 'pinned' ? 'pinned' : 'matched');
+      
+      // Handle successful response
+      if (data.match) {
+        setCurrentMatch(data.match);
+        setMatchedUser(data.matchedUser);
+        setUserState(data.match.status === 'pinned' ? 'pinned' : 'matched');
+        
+        // If there's feedback, add it to notifications
+        if (data.lastFeedback) {
+          const feedbackNotification = {
+            id: `feedback-${Date.now()}`,
+            type: 'feedback',
+            title: 'New Feedback Received',
+            message: `Feedback on your match with ${data.matchedUser.name}`,
+            details: data.lastFeedback.details,
+            time: 'Just now',
+            read: false,
+            timestamp: new Date()
+          };
+          setNotifications(prev => [feedbackNotification, ...prev]);
+          setUnreadCount(prev => prev + 1);
+        }
+      }
     } catch (error) {
       console.error('Error fetching daily match:', error);
-      setError(error.message);
+      setError(error.message || 'Failed to fetch daily match');
     } finally {
       setLoading(false);
     }
   };
+  
+  // Helper function to update match activity data
+  const updateMatchActivityData = (startTime, endTime) => {
+    const matchStartTime = new Date(startTime);
+    const matchEndTime = new Date(endTime);
+    const durationHours = Math.ceil((matchEndTime - matchStartTime) / (1000 * 60 * 60));
+    
+    setMatchData({
+      startTime: matchStartTime,
+      endTime: matchEndTime,
+      duration: durationHours
+    });
+    setChatDuration(durationHours);
+    
+    // Estimate message count based on duration (for demo purposes)
+    const estimatedMessages = Math.floor(durationHours * 15); // 15 messages per hour average
+    setChatMessageCount(estimatedMessages);
+  };
 
   // Fetch user statistics
-  const fetchUserStats = async (token) => {
+  const fetchUserStats = async () => {
     try {
-      // This would be a real API call in production
-      // For now, we'll simulate some stats
+      // Get basic stats
+      const stats = await statsAPI.getUserStats();
+      
+      // Get additional insights
+      const insights = await Promise.all([
+        statsAPI.getCompatibilityInsights(),
+        statsAPI.getMatchingPatterns()
+      ]);
+      
+      setUserStats({
+        totalMatches: stats.totalMatches || 0,
+        successfulConnections: stats.successfulConnections || 0,
+        averageCompatibility: stats.averageCompatibility || 0,
+        daysActive: stats.daysActive || 0,
+        insights: {
+          compatibility: insights[0],
+          patterns: insights[1]
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching user stats:', error);
+      // Fallback to default stats if API fails
       setUserStats({
         totalMatches: 12,
         successfulConnections: 8,
         averageCompatibility: 87,
-        daysActive: 45
+        daysActive: 45,
+        insights: {}
       });
-    } catch (error) {
-      console.error('Error fetching user stats:', error);
     }
   };
 
   // Fetch notifications
-  const fetchNotifications = async (token) => {
+  const fetchNotifications = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/notifications', {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to fetch notifications');
+      // Get notifications and unread count in parallel
+      const [notificationsRes, unreadCountRes] = await Promise.all([
+        notificationsAPI.getNotifications(),
+        notificationsAPI.getUnreadCount()
+      ]);
+      
+      setNotifications(notificationsRes.notifications || []);
+      setUnreadCount(unreadCountRes.count || 0);
+      
+      // Mark all notifications as read
+      if (unreadCountRes.count > 0) {
+        await notificationsAPI.markAllAsRead();
       }
-
-      setNotifications(data.notifications);
-      setUnreadCount(data.unreadCount);
     } catch (error) {
       console.error('Error fetching notifications:', error);
     }
@@ -182,21 +236,38 @@ const DashboardEnhanced = () => {
   const handlePinMatch = async () => {
     if (!currentMatch) return;
 
-    const token = localStorage.getItem('token');
-    if (!token) {
-      navigate('/login');
-      return;
-    }
-
     try {
-      const response = await fetch(`http://localhost:5000/api/matches/${currentMatch._id}/pin`, {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const data = await response.json();
+      if (userState === 'pinned') {
+        // Unpin the match
+        await matchesAPI.unpinMatch(currentMatch._id);
+        setUserState('matched');
+        
+        // Show success message
+        setNotifications(prev => [{
+          id: `unpin-${Date.now()}`,
+          type: 'info',
+          title: 'Match Unpinned',
+          message: 'You can now receive new matches',
+          time: 'Just now',
+          read: false,
+          timestamp: new Date()
+        }, ...prev]);
+      } else {
+        // Pin the match
+        await matchesAPI.pinMatch(currentMatch._id);
+        setUserState('pinned');
+        
+        // Show success message
+        setNotifications(prev => [{
+          id: `pin-${Date.now()}`,
+          type: 'success',
+          title: 'Match Pinned',
+          message: 'You can continue chatting with this match',
+          time: 'Just now',
+          read: false,
+          timestamp: new Date()
+        }, ...prev]);
+      }
 
       if (!response.ok) {
         throw new Error(data.message || 'Failed to pin match');

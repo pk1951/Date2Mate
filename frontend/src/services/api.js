@@ -195,18 +195,30 @@ export const authAPI = {
 
 // Matches API
 export const matchesAPI = {
-  getDailyMatches: () => apiRequest('/api/matches/daily'),
+  // Get daily match
+  getDailyMatch: () => apiRequest('/api/matches/daily'),
   
+  // Get match details
   getMatch: (matchId) => apiRequest(`/api/matches/${matchId}`),
   
-  pinMatch: (matchId) => apiRequest(`/api/matches/${matchId}/pin`, {
-    method: 'POST',
-  }),
+  // Pin a match
+  pinMatch: (matchId) => apiRequest(`/api/matches/${matchId}/pin`, { method: 'PUT' }),
   
-  unpinMatch: (matchId, options = {}) => apiRequest(`/api/matches/${matchId}/unpin`, {
-    method: 'POST',
-    body: options,
-  }),
+  // Unpin a match
+  unpinMatch: (matchId) => apiRequest(`/api/matches/${matchId}/unpin`, { method: 'PUT' }),
+  
+  // Get user's match history
+  getMatchHistory: () => apiRequest('/api/matches/history'),
+  
+  // Get match statistics
+  getMatchStats: () => apiRequest('/api/matches/stats'),
+  
+  // Update match status
+  updateMatchStatus: (matchId, status) => 
+    apiRequest(`/api/matches/${matchId}/status`, { 
+      method: 'PUT',
+      body: { status }
+    })
 };
 
 // Messages API
@@ -226,9 +238,44 @@ export const messagesAPI = {
 
 // Notifications API
 export const notificationsAPI = {
+  // Get all notifications
   getNotifications: () => apiRequest('/api/notifications'),
   
+  // Get chat activity
   getActivity: () => apiRequest('/api/notifications/activity'),
+  
+  // Mark notification as read
+  markAsRead: (notificationId) => 
+    apiRequest(`/api/notifications/${notificationId}/read`, { 
+      method: 'PUT' 
+    }),
+    
+  // Mark all notifications as read
+  markAllAsRead: () => 
+    apiRequest('/api/notifications/read-all', { 
+      method: 'PUT' 
+    }),
+    
+  // Get unread count
+  getUnreadCount: () => apiRequest('/api/notifications/unread-count')
+};
+
+// User Stats API
+export const statsAPI = {
+  // Get user statistics
+  getUserStats: () => apiRequest('/api/users/stats'),
+  
+  // Get user activity
+  getUserActivity: (period = 'week') => 
+    apiRequest(`/api/users/activity?period=${period}`),
+    
+  // Get compatibility insights
+  getCompatibilityInsights: () => 
+    apiRequest('/api/users/insights/compatibility'),
+    
+  // Get matching patterns
+  getMatchingPatterns: () => 
+    apiRequest('/api/users/insights/matching-patterns')
 };
 
 // Upload API

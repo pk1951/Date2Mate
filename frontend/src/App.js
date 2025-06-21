@@ -6,7 +6,7 @@ import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import ProfileSetup from './pages/ProfileSetup';
-import Dashboard from './pages/Dashboard';
+import DashboardEnhanced from './pages/DashboardEnhanced';
 import Chat from './pages/Chat';
 import Settings from './pages/Settings';
 import DecisionScreen from './pages/DecisionScreen';
@@ -44,7 +44,7 @@ function App() {
             path="/dashboard" 
             element={
               <ProtectedRoute>
-                <Dashboard />
+                <DashboardEnhanced />
               </ProtectedRoute>
             } 
           />
