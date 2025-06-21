@@ -24,7 +24,7 @@ const allowedOrigins = [
   // Pattern for any Vercel preview deployments
   'https://date2-mate-*.vercel.app',
   'https://date2-mate-*-pes2ug22cs413s-projects.vercel.app',
-  
+   'https://date2mate.vercel.app',
   // Local development
   'http://localhost:3000',
   'http://localhost:3001'
